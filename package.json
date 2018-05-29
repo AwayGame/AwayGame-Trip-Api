@@ -6,11 +6,23 @@
     "start": "node ./bin/www"
   },
   "dependencies": {
+    "@google/maps": "^0.4.6",
+    "async": "^2.6.1",
+    "axios": "^0.18.0",
+    "body-parser": "^1.18.3",
+    "compression": "^1.7.2",
     "cookie-parser": "~1.4.3",
+    "cors": "^2.8.4",
     "debug": "~2.6.9",
     "express": "~4.16.0",
+    "flat": "^4.0.0",
+    "http": "0.0.0",
     "http-errors": "~1.6.2",
     "jade": "~1.11.0",
-    "morgan": "~1.9.0"
+    "moment": "^2.22.1",
+    "morgan": "~1.9.0",
+    "redis": "^2.8.0",
+    "underscore": "^1.9.0",
+    "yelp-fusion": "^2.0.3"
   }
 }

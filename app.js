@@ -1,23 +1,29 @@
-var express = require('express');
-var app = express();
+const express = require('express');
+const compression = require('compression')
+const bodyParser = require('body-parser')
+const cors = require('cors')
+const app = express();
+const http = require('http')
+const server = http.createServer(app);
+axios = require('axios');
 config = require('./config');
-var bodyParser = require('body-parser')
-var http = require('http')
 API = require('./api/index');
+redisHelper = require('./helpers/redis')
 
-// var CronJob = require('cron').CronJob;
-// var onFinish = null;
-// var runRightNow = true;
-// var timeZone = 'America/New_York';
+app.use(bodyParser.json());
+app.use(cors({ origin: true }))
+// Uncomment below for compression
+//app.use(compression());
 
-// var checkForMissedIssuancesCron = '0 */1 * * * *';
-// var checkForMissedIssuancesJob = new CronJob(checkForMissedIssuancesCron, function() {
-//     OpenAssetsHelper.checkForMissedIssuances();
-// }, onFinish, runRightNow, timeZone);
-
-
-app.post('/api/trip', function(req, res) {
-    return res.status(200).send('here')
+app.post('/api/trip', (req, res) => {
+    API.Trip.createTrip(req.body).then(trip => {
+        return res.send(trip)
+    }).catch(error => {
+        console.log("error: ", error)
+        return res.status(error.status).send({
+            error: error.error
+        })
+    })
 })
 
 server.listen(config.port, function() {
