@@ -45,6 +45,10 @@ function getBusinesses(queryObjects) {
                     results = helpers.removeDuplicates(results, 'name')
                     results = helpers.removeDuplicates(results, 'place_id')
                     results = helpers.addProvider(results, 'google')
+
+                    // If there are no opening hours, remove
+                    results = helpers.removeIfNoValueByKey(results, 'opening_hours')
+
                     return resolve(results)
                 }
             })
@@ -65,10 +69,8 @@ function getBusinesses(queryObjects) {
                 let cachedData = await redisHelper.get(key)
 
                 if (cachedData) {
-                    console.log("returning cached data in google")
                     return resolve(cachedData.results)
                 } else {
-                    console.log("no cached data in google")
                     GoogleMapsClient.places(googleRequestObject.data, function(err, response) {
                         if (!err) {
                             response.json.results.forEach(business => {
@@ -84,7 +86,6 @@ function getBusinesses(queryObjects) {
                                 }, 2500)
                             } else {
                                 // save this into cache for the next request
-
                                 redisHelper.set(key, {
                                     results: results
                                 }).then(cacheResult => {
@@ -105,8 +106,7 @@ function getQueryData(type, data) {
     let baseObject = {
         location: [data.lat, data.long],
         radius: helpers.milesToRadius(data.radius),
-        language: 'en',
-        opennow: true
+        language: 'en'
     }
 
     switch (type) {
@@ -178,6 +178,8 @@ async function getBusinessesInMoreDetail(businesses) {
 
                     //Check to see if we're done
                     if (detailedResults.length === businesses.length) {
+                        // If there are no opening hours, remove
+                        detailedResults = helpers.removeIfNoValueByKey(detailedResults, 'hours')
                         return resolve(detailedResults)
                     }
                 } else {
@@ -234,7 +236,9 @@ async function getBusinessesInMoreDetail(businesses) {
          * @return {Object} hours
          */
         function getHours(business) {
-            if (!business.opening_hours) return {}
+            if (!business.opening_hours || !business.opening_hours.periods) {
+                return undefined
+            }
 
             return {
                 formattedHours: business.opening_hours.weekday_text,

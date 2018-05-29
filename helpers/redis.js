@@ -29,6 +29,7 @@ module.exports = {
 	        }))
 	        client.set(key, obj, 'EX', config.redis.TTL, function(err, result) {
 	        	if (result) {
+	        		console.log("cached data")
 	                resolve(result)
 	            } else if (!err) {
 	                resolve(null)
@@ -42,6 +43,7 @@ module.exports = {
     	return new Promise((resolve, reject) => {
 	        client.get(key, function(err, result) {
 	            if (result) {
+	            	console.log("retrieved cached data")
 	                resolve(JSON.parse(unflatten(result), {
 	                	object: true
 	                }))

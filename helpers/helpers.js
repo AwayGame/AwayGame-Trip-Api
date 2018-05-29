@@ -1,3 +1,4 @@
+const _ = require('underscore')
 // Helper functions
 
 module.exports = {
@@ -40,6 +41,12 @@ module.exports = {
         array = array.sort(function(a, b) {
             return b[key] - a[key]
         });
+        return array
+    },
+    removeIfNoValueByKey: (array, key) => {
+        array = _.filter(array, function(obj) { 
+            return obj[key] !== undefined && obj[key] !== null
+        })
         return array
     }
 }

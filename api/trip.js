@@ -80,10 +80,7 @@ module.exports = {
                 initialListOfBusinesses = helpers.removeDuplicates(initialListOfBusinesses, 'name')
                 // Sort by user preferences
                 initialListOfBusinesses = sortByUserPreferenceAndRemoveBusinessesWithoutRequiredParameters(initialListOfBusinesses, data.preferences)
-                // Filter our choices down based on user preference with multiple options
                 getListOfFinalBusinessesForUser(formattedTripDates.length, initialListOfBusinesses).then(finalChoices => {
-                    // Get more details for the user's businesses before we format the trip
-                    console.log("Getting details for this many: ", finalChoices.length)
                     getMoreDetails(finalChoices).then(finalBusinessData => {
                         let finalBusinesses = []
                         for (var i = 0; i < finalBusinessData.length; i++) {
@@ -163,8 +160,7 @@ module.exports = {
                                 if (validBusiness(foundBusinesses, business, category, businesses, businessDay, day, time)) {
                                     foundBusinesses.push(business)
                                     if (foundBusinesses.length >= 3) {
-                                        console.log("got here...")
-
+                                        
                                         let activityToReturn = foundBusinesses[0]
                                         activityToReturn.backups = [foundBusinesses[1], foundBusinesses[2]]
 
@@ -283,7 +279,7 @@ function getMoreDetails(businesses) {
             }
             data[businesses[i].provider].push(businesses[i])
         }
-        
+
         Promise.all([
             GoogleHelper.getMoreDetails(data['google']),
             YelpHelper.getMoreDetails(data['yelp'])

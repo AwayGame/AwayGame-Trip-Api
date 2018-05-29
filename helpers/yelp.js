@@ -54,7 +54,6 @@ function searchForBusinesses(data) {
 
                 redisHelper.get(key).then(cachedData => {
                     if (cachedData) {
-                        console.log("got cached data from yelp")
                         finalResults = finalResults.concat(cachedData.results)
                         searches++
                         if (searches === totalCategories) {
@@ -63,7 +62,6 @@ function searchForBusinesses(data) {
                             return resolve(finalResults)
                         }
                     } else {
-                        console.log("no cached data in yelp...")
                         YelpClient.search({
                             term: getSearchTerm(category, subcategory),
                             categories: getCategories(category, subcategory),
@@ -73,7 +71,6 @@ function searchForBusinesses(data) {
                             limit: 50,
                             radius: helpers.milesToRadius(data.radius)
                         }).then(response => {
-                            console.log("just got " + response.jsonBody.businesses.length + " businessess...")
                             if (response.jsonBody.businesses.length) {
                                 response.jsonBody.businesses.forEach(business => {
                                     if (category === 'dayActivities') {
