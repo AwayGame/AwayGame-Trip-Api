@@ -112,7 +112,9 @@ module.exports = {
                 let trip = {}
 
                 for (var i = 0; i < tripLengthInDays.length; i++) {
-                    trip[tripLengthInDays[i].format()] = getActivitiesAndBackupsForTheDay(businesses, tripLengthInDays[i])
+                    let tripDataForTheDay = getActivitiesAndBackupsForTheDay(businesses, tripLengthInDays[i])
+                    trip[tripLengthInDays[i].format()] = tripDataForTheDay[0]
+                    businesses = tripDataForTheDay[1]
                 }
 
                 console.log("done!")
@@ -140,7 +142,7 @@ module.exports = {
 
                     console.log("about to return the day")
 
-                    return day
+                    return [day, businesses]
 
 
                     /**
@@ -160,7 +162,7 @@ module.exports = {
                                 if (validBusiness(foundBusinesses, business, category, businesses, businessDay, day, time)) {
                                     foundBusinesses.push(business)
                                     if (foundBusinesses.length >= 3) {
-                                        
+
                                         let activityToReturn = foundBusinesses[0]
                                         activityToReturn.backups = [foundBusinesses[1], foundBusinesses[2]]
 
