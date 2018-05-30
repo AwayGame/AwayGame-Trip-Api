@@ -1,6 +1,7 @@
 const helpers = require('../helpers/helpers')
 const GoogleHelper = require('../helpers/google')
 const YelpHelper = require('../helpers/yelp')
+const TicketMasterHelper = require('../helpers/ticketmaster')
 const moment = require('moment')
 const _ = require('underscore')
 
@@ -50,45 +51,49 @@ module.exports = {
      */
     createTrip: (data) => {
         return new Promise((resolve, reject) => {
-            if (!data.radius) data.radius = "3.0"
-            let arrivalDate = moment(data.arrivalTime);
-            let departureDate = moment(data.departureTime);
-            let tripLengthInHours = departureDate.diff(arrivalDate, 'hours')
-            let totalDays = departureDate.diff(arrivalDate, 'days')
-            let remainingHours = tripLengthInHours - (24 * totalDays)
-            let formattedTripDates = []
-            console.log("trip length is " + totalDays + " day(s) and " + remainingHours + " hour(s)")
 
+            console.log("fetching game data...")
+            getGameData(data.gameId).then(gameData => {
+                console.log("got the game data...")
+                if (!data.radius) data.radius = "3.0"
+                let arrivalDate = moment(data.arrivalTime);
+                let departureDate = moment(data.departureTime);
+                let tripLengthInHours = departureDate.diff(arrivalDate, 'hours')
+                let totalDays = departureDate.diff(arrivalDate, 'days')
+                let remainingHours = tripLengthInHours - (24 * totalDays)
+                let formattedTripDates = []
+                console.log("trip length is " + totalDays + " day(s) and " + remainingHours + " hour(s)")
 
-            while (arrivalDate.isBefore(departureDate)) {
-                formattedTripDates.push(new moment(arrivalDate.format()))
-                arrivalDate.add(1, 'days');
-            }
-
-            let categories = []
-            // Get a list of businesses that we can filter and sort
-            // through before getting more details
-            getListOfBusinessesFromProviders(data).then(businessData => {
-                let initialListOfBusinesses = []
-
-                for (var i = 0; i < businessData.length; i++) {
-                    initialListOfBusinesses.push(...businessData[i])
+                while (arrivalDate.isBefore(departureDate)) {
+                    formattedTripDates.push(new moment(arrivalDate.format()))
+                    arrivalDate.add(1, 'days');
                 }
 
-                // Remove duplicates
-                initialListOfBusinesses = helpers.removeDuplicates(initialListOfBusinesses, 'id')
-                initialListOfBusinesses = helpers.removeDuplicates(initialListOfBusinesses, 'name')
-                // Sort by user preferences
-                initialListOfBusinesses = sortByUserPreferenceAndRemoveBusinessesWithoutRequiredParameters(initialListOfBusinesses, data.preferences)
-                getListOfFinalBusinessesForUser(formattedTripDates.length, initialListOfBusinesses).then(finalChoices => {
-                    getMoreDetails(finalChoices).then(finalBusinessData => {
-                        let finalBusinesses = []
-                        for (var i = 0; i < finalBusinessData.length; i++) {
-                            finalBusinesses.push(...finalBusinessData[i])
-                        }
+                let categories = []
+                // Get a list of businesses that we can filter and sort
+                // through before getting more details
+                getListOfBusinessesFromProviders(data).then(businessData => {
+                    let initialListOfBusinesses = []
 
-                        formatTripFromBusinesses(formattedTripDates, finalBusinesses).then(trip => {
-                            return resolve(trip)
+                    for (var i = 0; i < businessData.length; i++) {
+                        initialListOfBusinesses.push(...businessData[i])
+                    }
+
+                    // Remove duplicates
+                    initialListOfBusinesses = helpers.removeDuplicates(initialListOfBusinesses, 'id')
+                    initialListOfBusinesses = helpers.removeDuplicates(initialListOfBusinesses, 'name')
+                    // Sort by user preferences
+                    initialListOfBusinesses = sortByUserPreferenceAndRemoveBusinessesWithoutRequiredParameters(initialListOfBusinesses, data.preferences)
+                    getListOfFinalBusinessesForUser(formattedTripDates.length, initialListOfBusinesses).then(finalChoices => {
+                        getMoreDetails(finalChoices).then(finalBusinessData => {
+                            let finalBusinesses = []
+                            for (var i = 0; i < finalBusinessData.length; i++) {
+                                finalBusinesses.push(...finalBusinessData[i])
+                            }
+
+                            formatTripFromBusinesses(formattedTripDates, finalBusinesses, gameData).then(trip => {
+                                return resolve(trip)
+                            })
                         })
                     })
                 })
@@ -99,20 +104,25 @@ module.exports = {
          * This function creates the trip response object for the front end
          * @param  {Array}          tripLengthInDays        THe days the user is going on their trip
          * @param  {Array}          businesses              The businesses and activities to use
+         * @param  {Object}         gameData                The game that the user is going to
          * @return {Object}         trip                    The user's trip
          */
-        function formatTripFromBusinesses(tripLengthInDays, businesses) {
+        function formatTripFromBusinesses(tripLengthInDays, businesses, gameData) {
             return new Promise((resolve, reject) => {
-                console.log("Creating trip...")
-
-                // Format the businesses into an trip for the user
-                // Each key is a day in the user's trip, with the times
-                // listed out as keys as well
-
                 let trip = {}
 
+                console.log("Creating trip...")
+
+                //Figure out when the user is going to their game. If the game
+                //time is not set, then set a boolean on the trip
+                if (gameData.dates.start.timeTBA) {
+                    trip.needToCheckForGameTime = true
+                } else {
+
+                }
+
                 for (var i = 0; i < tripLengthInDays.length; i++) {
-                    let tripDataForTheDay = getActivitiesAndBackupsForTheDay(businesses, tripLengthInDays[i])
+                    let tripDataForTheDay = getActivitiesAndBackupsForTheDay(businesses, tripLengthInDays[i], gameData)
                     trip[tripLengthInDays[i].format()] = tripDataForTheDay[0]
                     businesses = tripDataForTheDay[1]
                 }
@@ -122,25 +132,30 @@ module.exports = {
 
                 return resolve(trip)
 
-                /**
-                 * Formats a "day" object for the trip
-                 * @return {Object} A full day of activities
-                 */
-                function getActivitiesAndBackupsForTheDay(businesses, date) {
+                function getActivitiesAndBackupsForTheDay(businesses, date, gameData) {
                     let day = {}
+                    let activityForGame = getActivityForGame(gameData.dates.start, date)
 
                     for (var i = 0; i < ACTIVITIES.length; i++) {
+                        // Check to see if this is when we add the game
+
                         let activity = ACTIVITIES[i]
-                        let data = getBusinessAndBackupOpenAtAvailableTime(activity.activity, businesses, date.day(), activity.subactivity)
-                        if (data) {
-                            day[activity.subactivity] = data.activity
-                            businesses = _(businesses).filter(function(b) {
-                                return !data.foundBusinesses.includes(b)
-                            });
+                        if (activityForGame && activityForGame === activity.subactivity) {
+                            // This is where the game should be
+                            day['game'] = {
+                                'title': gameData.name,
+                                'time': moment(gameData.dates.start.dateTime)
+                            }
+                        } else {
+                            let data = getBusinessAndBackupOpenAtAvailableTime(activity.activity, businesses, date.day(), activity.subactivity)
+                            if (data) {
+                                day[activity.subactivity] = data.activity
+                                businesses = _(businesses).filter(function(b) {
+                                    return !data.foundBusinesses.includes(b)
+                                });
+                            }
                         }
                     }
-
-                    console.log("about to return the day")
 
                     return [day, businesses]
 
@@ -303,4 +318,31 @@ function sortByUserPreferenceAndRemoveBusinessesWithoutRequiredParameters(busine
         return b.rating - a.rating
     });
     return businesses
+}
+
+function getGameData(id) {
+    return new Promise((resolve, reject) => {
+        TicketMasterHelper.getGameDetails(id).then(details => {
+                return resolve(details)
+            })
+            .catch(e => {
+                reject(e)
+            })
+    })
+}
+
+/**
+ * Gets the correct time slot for the game
+ * @param  {Object} gameData The game data
+ * @return {Object}          The time slot for the game
+ */
+function getActivityForGame(gameDateTimes, currentDay) {
+    let date = parseInt(moment(gameDateTimes.dateTime).format('HHmm'))
+    let keysOfTimes = Object.keys(TIMES)
+    for (var i = 0; i < keysOfTimes.length; i++) {
+        let activity = keysOfTimes[i]
+        if (i > 0 && date > TIMES[activity] && date <= TIMES[keysOfTimes[i + 1]] && moment(gameDateTimes.dateTime).isSame(moment(currentDay), 'day')) {
+            return activity
+        }
+    }
 }
