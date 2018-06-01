@@ -3,6 +3,7 @@ const GoogleHelper = require('../helpers/google')
 const YelpHelper = require('../helpers/yelp')
 const TicketMasterHelper = require('../helpers/ticketmaster')
 const moment = require('moment')
+const RedisHelper = require('../helpers/redis')
 const _ = require('underscore')
 
 const TIMES = {
@@ -117,8 +118,6 @@ module.exports = {
                 //time is not set, then set a boolean on the trip
                 if (gameData.dates.start.timeTBA) {
                     trip.needToCheckForGameTime = true
-                } else {
-
                 }
 
                 for (var i = 0; i < tripLengthInDays.length; i++) {
@@ -136,28 +135,54 @@ module.exports = {
                     let day = {}
                     let activityForGame = getActivityForGame(gameData.dates.start, date)
 
-                    for (var i = 0; i < ACTIVITIES.length; i++) {
-                        // Check to see if this is when we add the game
-
-                        let activity = ACTIVITIES[i]
-                        if (activityForGame && activityForGame === activity.subactivity) {
-                            // This is where the game should be
-                            day['game'] = {
-                                'title': gameData.name,
-                                'time': moment(gameData.dates.start.dateTime)
-                            }
-                        } else {
-                            let data = getBusinessAndBackupOpenAtAvailableTime(activity.activity, businesses, date.day(), activity.subactivity)
-                            if (data) {
+                    if (trip.needToCheckForGameTime && moment(gameData.dates.start.localDate).isSame(moment(date), 'day')) {
+                        // If the game is not scheduled, then we need only set up to lunch
+                        let keysToAdd = ['breakfast', 'morningActivity', 'lunch']
+                        for (var i = 0; i < ACTIVITIES.length; i++) {
+                            let activity = ACTIVITIES[i]
+                            if (_.contains(keysToAdd, activity.subactivity)) {
+                                let data = getBusinessAndBackupOpenAtAvailableTime(activity.activity, businesses, date.day(), activity.subactivity)
                                 day[activity.subactivity] = data.activity
                                 businesses = _(businesses).filter(function(b) {
                                     return !data.foundBusinesses.includes(b)
                                 });
                             }
                         }
-                    }
 
-                    return [day, businesses]
+                        // Add the game to day, return it, and set into redis
+                        day['game'] = {
+                            'title': gameData.name,
+                            'time': 'TBA',
+                            'isTBA': true
+                        }
+
+                        return [day, businesses]
+
+                    } else {
+                        for (var i = 0; i < ACTIVITIES.length; i++) {
+                            // Check to see if this is when we add the game
+
+                            let activity = ACTIVITIES[i]
+                            if (activityForGame && activityForGame === activity.subactivity) {
+                                // This is where the game should be
+                                day['game'] = {
+                                    'title': gameData.name,
+                                    'time': moment(gameData.dates.start.dateTime),
+                                    'isTBA': false
+                                }
+                            } else {
+                                let data = getBusinessAndBackupOpenAtAvailableTime(activity.activity, businesses, date.day(), activity.subactivity)
+                                if (data) {
+                                    day[activity.subactivity] = data.activity
+                                    businesses = _(businesses).filter(function(b) {
+                                        return !data.foundBusinesses.includes(b)
+                                    });
+                                }
+                            }
+                        }
+
+                        return [day, businesses]
+                    }
 
 
                     /**

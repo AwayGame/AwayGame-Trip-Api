@@ -17,7 +17,6 @@ app.use(cors({ origin: true }))
 
 app.post('/api/trip', (req, res) => {
     API.Trip.createTrip(req.body).then(trip => {
-    	// Add the user's preferences that they used when creating the trip
     	trip.preferencesUsed = req.body
         return res.send(trip)
     }).catch(error => {
