@@ -108,15 +108,20 @@ function getBusinessesInMoreDetail(businesses) {
 
         let detailedResults = []
         let q = queue(function(task, callback) {
+            console.log("getting a yelp business")
             getBusiness(task.id).then(function(result) {
                 if (!result.hours) {
                     callback()
                 } else {
-                    result.category = task.category
-                    result.subcategory = task.subcategory
-                    detailedResults.push(formatBusinessResult(result))
-                    callback()
+                    setTimeout(function() {
+                        result.category = task.category
+                        result.subcategory = task.subcategory
+                        detailedResults.push(formatBusinessResult(result))
+                        callback()
+                    }, 250)
                 }
+            }).catch(e => {
+                callback()
             })
         }, 1);
 
