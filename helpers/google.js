@@ -4,10 +4,10 @@ const GoogleMapsClient = require('@google/maps').createClient({
 });
 
 module.exports = {
-    findBusinesses: async(data) => {
+    findBusinesses: async(data, required) => {
         return new Promise((resolve, reject) => {
-            let queryObjects = [...getQueryData('food', data), ...getQueryData('day', data), ...getQueryData('night', data)]
-            getBusinesses(queryObjects).then((businesses) => {
+            let queryObjects = getQueryData(data, required)
+            getBusinesses(queryObjects, required).then((businesses) => {
                 return resolve(businesses)
             })
         })
@@ -17,24 +17,26 @@ module.exports = {
         return new Promise((resolve, reject) => {
             getBusinessesInMoreDetail(businesses).then(detailedBusinesses => {
                 return resolve(detailedBusinesses)
+            }).catch(err => {
+                console.log("error getting details in google: ", err)
             })
         })
     }
 }
 
-
-/**
- * 
- * Function definitions
- * 
- */
-
-function getBusinesses(queryObjects) {
-    let results = []
-    let totalRequests = 0
+function getBusinesses(queryObjects, required) {
     return new Promise((resolve, reject) => {
+        let results = []
+        let totalRequests = 0
+
+        console.log(queryObjects)
+        
         queryObjects.forEach(queryObject => {
-            getBusinessesFromGoogle(queryObject).then(response => {
+            console.log("queryObject: ", queryObject)
+            let amountToFetch = required[queryObject.subcategory].count
+            console.log("amountToFetch: ", amountToFetch)
+
+            getBusinessesFromGoogle(queryObject, amountToFetch).then(response => {
                 response.forEach(result => {
                     result.id = result.place_id
                     results.push(result)
@@ -55,7 +57,7 @@ function getBusinesses(queryObjects) {
         })
     })
 
-    function getBusinessesFromGoogle(queryObject) {
+    function getBusinessesFromGoogle(queryObject, amountToFetch) {
         return new Promise((resolve, reject) => {
             let results = []
 
@@ -69,6 +71,8 @@ function getBusinesses(queryObjects) {
                 let cachedData = await redisHelper.get(key)
 
                 if (cachedData) {
+                    // @TODO: Check if cachedData.results.length < amountToFetch. If
+                    // it is, then fetch more data...
                     return resolve(cachedData.results)
                 } else {
                     GoogleMapsClient.places(googleRequestObject.data, function(err, response) {
@@ -79,7 +83,7 @@ function getBusinesses(queryObjects) {
                                 results.push(business)
                             })
 
-                            if (response.json.next_page_token) {
+                            if (response.json.next_page_token && results.length < amountToFetch) {
                                 googleRequestObject.data.pagetoken = response.json.next_page_token
                                 setTimeout(function() {
                                     makeRequests(googleRequestObject, results)
@@ -102,62 +106,59 @@ function getBusinesses(queryObjects) {
     }
 }
 
-function getQueryData(type, data) {
-    let baseObject = {
-        location: [data.lat, data.long],
-        radius: helpers.milesToRadius(data.radius),
-        language: 'en'
+function getQueryData(data, required) {
+    return Object.keys(required).map(activity => {
+        let baseObject = {
+            location: [data.lat, data.long],
+            radius: helpers.milesToRadius(data.radius),
+            language: 'en'
+        }
+
+        switch (required[activity].category) {
+            case 'food':
+                return formatFoodObject(baseObject, activity)
+                break;
+            case 'day':
+                return formatDayObject(baseObject, activity)
+                break;
+            case 'night':
+                return formatNightObject(baseObject, activity)
+                break;
+        }
+    })
+
+
+    function formatFoodObject(baseObject, activity) {
+        let objToReturn = baseObject
+        objToReturn.type = 'restaurant'
+        objToReturn.query = config.google.foodCategories[activity]
+
+        return {
+            data: objToReturn,
+            category: 'food',
+            subcategory: activity
+        }
     }
 
-    switch (type) {
-        case 'food':
-            return formatFoodObject(baseObject)
-            break;
-        case 'day':
-            return formatDayObject(baseObject)
-            break;
-        case 'night':
-            return formatNightObject(baseObject)
-            break;
-    }
-
-    function formatFoodObject(baseObject) {
-        return data.preferences.food.map(preference => {
-            let objToReturn = baseObject
-            objToReturn.type = 'restaurant'
-            objToReturn.query = config.google.foodCategories[preference]
-
-            return {
-                data: objToReturn,
-                category: 'food',
-                subcategory: preference
-            }
-        })
-    }
-
-    function formatDayObject(baseObject) {
-        return data.preferences.dayActivities.map(preference => {
-            let objToReturn = baseObject
-            objToReturn.query = config.google.dayActivities[preference]
-            return {
-                data: objToReturn,
-                category: 'day',
-                subcategory: preference
-            }
-        })
+    function formatDayObject(baseObject, activity) {
+        let objToReturn = baseObject
+        objToReturn.query = config.google.dayActivities[activity]
+        return {
+            data: objToReturn,
+            category: 'day',
+            subcategory: activity
+        }
 
     }
 
-    function formatNightObject(baseObject) {
-        return data.preferences.nightActivities.map(preference => {
-            let objToReturn = baseObject
-            objToReturn.query = config.google.nightActivities[preference]
-            return {
-                data: objToReturn,
-                category: 'night',
-                subcategory: preference
-            }
-        })
+    function formatNightObject(baseObject, activity) {
+        let objToReturn = baseObject
+        objToReturn.query = config.google.nightActivities[activity]
+        return {
+            data: objToReturn,
+            category: 'night',
+            subcategory: activity
+        }
     }
 }
 

@@ -6,74 +6,33 @@ const moment = require('moment')
 const RedisHelper = require('../helpers/redis')
 const _ = require('underscore')
 
-const TIMES = {
-    'breakfast': 500,
-    'morningActivity': 1000,
-    'lunch': 1200,
-    'afternoonActivity': 1400,
-    'dinner': 1800,
-    'eveningActivity': 2100
-}
-
-const DAILY_PREFERENCE_COUNT = {
-    'food': 3,
-    'day': 2,
-    'night': 1
-}
-
-const ACTIVITIES = [{
-        subactivity: 'breakfast',
-        activity: 'food'
-    }, {
-        subactivity: 'morningActivity',
-        activity: 'day'
-    }, {
-        subactivity: 'lunch',
-        activity: 'food'
-    }, {
-        subactivity: 'afternoonActivity',
-        activity: 'day'
-    },
-    {
-        subactivity: 'dinner',
-        activity: 'food'
-    }, {
-        subactivity: 'eveningActivity',
-        activity: 'night'
-    }
-]
-
 module.exports = {
-    /**
-     * Creates the user's trip by reaching out to our partners
-     * and finding activities, travel options, bookings, etc
-     * @param  {Object} The data passed up from the client
-     * @return {Object} The user's trip
-     */
-    createTrip: (data) => {
+    createTrip: async(data) => {
         return new Promise((resolve, reject) => {
-
             console.log("fetching game data...")
             getGameData(data.gameId).then(gameData => {
-                console.log("got the game data...")
-                if (!data.radius) data.radius = "3.0"
-                let arrivalDate = moment(data.arrivalTime);
-                let departureDate = moment(data.departureTime);
-                let tripLengthInHours = departureDate.diff(arrivalDate, 'hours')
-                let totalDays = departureDate.diff(arrivalDate, 'days')
-                let remainingHours = tripLengthInHours - (24 * totalDays)
-                let formattedTripDates = []
-                console.log("trip length is " + totalDays + " day(s) and " + remainingHours + " hour(s)")
-
-                while (arrivalDate.isBefore(departureDate)) {
-                    formattedTripDates.push(new moment(arrivalDate.format()))
-                    arrivalDate.add(1, 'days');
+                console.log("got the game data")
+                data.gameData = gameData
+                if (!data.radius) {
+                    data.radius = "3.0"
                 }
 
-                let categories = []
+                console.log("User is arriving on ", moment(data.arrivalTime).format("MM-DD-YYYY, hh:mm:ss a"))
+                console.log("User is leaving on ", moment(data.departureTime).format("MM-DD-YYYY, hh:mm:ss a"))
+                let arrivalDate = moment(data.arrivalTime);
+                let departureDate = moment(data.departureTime);
+
+                // First, we are going to create the user's Trip before using our third-party
+                // proivders to get the actual places.
+
+                // Create the user's trip stub of their preferences
+                let tripStub = createTripStub(data)
+                let totalTripTime = Object.keys(tripStub).length
+                let required = helpers.getRequiredBusinessesFromTripStub(tripStub)
+
                 // Get a list of businesses that we can filter and sort
                 // through before getting more details
-                getListOfBusinessesFromProviders(data).then(businessData => {
+                getListOfBusinessesFromProviders(data, required).then(businessData => {
                     let initialListOfBusinesses = []
 
                     for (var i = 0; i < businessData.length; i++) {
@@ -85,212 +44,83 @@ module.exports = {
                     initialListOfBusinesses = helpers.removeDuplicates(initialListOfBusinesses, 'name')
                     // Sort by user preferences
                     initialListOfBusinesses = sortByUserPreferenceAndRemoveBusinessesWithoutRequiredParameters(initialListOfBusinesses, data.preferences)
-                    getListOfFinalBusinessesForUser(formattedTripDates.length, initialListOfBusinesses).then(finalChoices => {
-                        getMoreDetails(finalChoices).then(finalBusinessData => {
-                            let finalBusinesses = []
-                            for (var i = 0; i < finalBusinessData.length; i++) {
-                                finalBusinesses.push(...finalBusinessData[i])
-                            }
+                    
+                    let finalListOfBusinesses = {}
+                    initialListOfBusinesses.forEach(b => {
+                        if (!finalListOfBusinesses[b.subcategory]) finalListOfBusinesses[b.subcategory] = []
+                        if(finalListOfBusinesses[b.subcategory].length < required[b.subcategory].count){
+                            finalListOfBusinesses[b.subcategory].push(b)
+                        }
+                    })
 
-                            formatTripFromBusinesses(formattedTripDates, finalBusinesses, gameData).then(trip => {
-                                return resolve(trip)
-                            })
+                    let finalSetOfDataToFetch = []
+                    Object.keys(finalListOfBusinesses).forEach(key => finalSetOfDataToFetch.push(...finalListOfBusinesses[key]))
+
+                    getMoreDetails(finalSetOfDataToFetch).then(finalBusinessData => {
+                        let finalBusinesses = []
+                        for (var i = 0; i < finalBusinessData.length; i++) {
+                            finalBusinesses.push(...finalBusinessData[i])
+                        }
+
+                        formatTripFromBusinesses(tripStub, finalBusinesses).then(trip => {
+                            return resolve(trip)
                         })
                     })
                 })
             })
         })
 
-        /**
-         * This function creates the trip response object for the front end
-         * @param  {Array}          tripLengthInDays        THe days the user is going on their trip
-         * @param  {Array}          businesses              The businesses and activities to use
-         * @param  {Object}         gameData                The game that the user is going to
-         * @return {Object}         trip                    The user's trip
-         */
-        function formatTripFromBusinesses(tripLengthInDays, businesses, gameData) {
+        function formatTripFromBusinesses(tripStub, businesses) {
             return new Promise((resolve, reject) => {
-                let trip = {}
-
+                console.log("Got the details for the businesses...")
                 console.log("Creating trip...")
 
-                //Figure out when the user is going to their game. If the game
-                //time is not set, then set a boolean on the trip
-                if (gameData.dates.start.timeTBA) {
-                    trip.needToCheckForGameTime = true
-                }
-
-                for (var i = 0; i < tripLengthInDays.length; i++) {
-                    let tripDataForTheDay = getActivitiesAndBackupsForTheDay(businesses, tripLengthInDays[i], gameData)
-                    trip[tripLengthInDays[i].format()] = tripDataForTheDay[0]
-                    businesses = tripDataForTheDay[1]
-                }
+                Object.keys(tripStub).forEach(day => getBusinessAndBackupOpenAtAvailableTime(day))
 
                 console.log("done!")
                 console.log("returning the trip")
 
-                return resolve(trip)
+                return resolve(tripStub)
 
-                function getActivitiesAndBackupsForTheDay(businesses, date, gameData) {
-                    let day = {}
-                    let activityForGame = getActivityForGame(gameData.dates.start, date)
-
-                    if (trip.needToCheckForGameTime && moment(gameData.dates.start.localDate).isSame(moment(date), 'day')) {
-                        // If the game is not scheduled, then we need only set up to lunch
-                        let keysToAdd = ['breakfast', 'morningActivity', 'lunch']
-                        for (var i = 0; i < ACTIVITIES.length; i++) {
-                            let activity = ACTIVITIES[i]
-                            if (_.contains(keysToAdd, activity.subactivity)) {
-                                let data = getBusinessAndBackupOpenAtAvailableTime(activity.activity, businesses, date.day(), activity.subactivity)
-                                day[activity.subactivity] = data.activity
-                                businesses = _(businesses).filter(function(b) {
-                                    return !data.foundBusinesses.includes(b)
-                                });
-                            }
-                        }
-
-                        // Add the game to day, return it, and set into redis
-                        day['game'] = {
-                            'title': gameData.name,
-                            'time': 'TBA',
-                            'isTBA': true
-                        }
-
-                        return [day, businesses]
-
-                    } else {
-                        for (var i = 0; i < ACTIVITIES.length; i++) {
-                            // Check to see if this is when we add the game
-
-                            let activity = ACTIVITIES[i]
-                            if (activityForGame && activityForGame === activity.subactivity) {
-                                // This is where the game should be
-                                day['game'] = {
-                                    'title': gameData.name,
-                                    'time': moment(gameData.dates.start.dateTime),
-                                    'isTBA': false
-                                }
-                            } else {
-                                let data = getBusinessAndBackupOpenAtAvailableTime(activity.activity, businesses, date.day(), activity.subactivity)
-                                if (data) {
-                                    day[activity.subactivity] = data.activity
-                                    businesses = _(businesses).filter(function(b) {
-                                        return !data.foundBusinesses.includes(b)
-                                    });
-                                }
-                            }
-                        }
-
-                        return [day, businesses]
-                    }
-
-
-                    /**
-                     * Determines if a business is open and in an available time for the user
-                     * @param  {Object}     The business we are comparing
-                     * @param  {Int}        The day (0 - 6) that we need the business to be open on
-                     * @param  {Int}        The time as an int that the business has to be open at
-                     * @return {Boolean}    True/False if it is open
-                     */
-                    function getBusinessAndBackupOpenAtAvailableTime(category, businesses, day, time) {
-                        let foundBusinesses = []
-
-                        for (var i = 0; i < businesses.length; i++) {
-                            let business = businesses[i]
-                            for (var j = 0; j < business.hours.individualDaysData.length; j++) {
-                                let businessDay = business.hours.individualDaysData[j]
-                                if (validBusiness(foundBusinesses, business, category, businesses, businessDay, day, time)) {
+                function getBusinessAndBackupOpenAtAvailableTime(day) {
+                    let foundBusinesses = []
+                    for (var i = 0; i < tripStub[day].length; i++) {
+                        let activity = tripStub[day][i]
+                        for (var j = 0; j < businesses.length; j++) {
+                            let business = businesses[j]
+                            for (var k = 0; k < business.hours.individualDaysData.length; k++) {
+                                let businessDay = business.hours.individualDaysData[k]
+                                if (_.findWhere(foundBusinesses, business) == null && business.subcategory === activity.name && businessDay.open.day === moment(day).day() && businessIsOpenOnTime(businessDay, day, activity)) {
                                     foundBusinesses.push(business)
                                     if (foundBusinesses.length >= 3) {
+                                        Object.keys(foundBusinesses[0]).forEach(key => {
+                                            activity[key] = foundBusinesses[0][key]
+                                        })
 
-                                        let activityToReturn = foundBusinesses[0]
-                                        activityToReturn.backups = [foundBusinesses[1], foundBusinesses[2]]
+                                        activity.backups = [foundBusinesses[1], foundBusinesses[2]]
 
-                                        return {
-                                            activity: activityToReturn,
-                                            foundBusinesses: foundBusinesses
-                                        }
+                                        businesses = _(businesses).filter(function(b) {
+                                            return !foundBusinesses.includes(b)
+                                        });
+                                        foundBusinesses = []
                                     }
                                 }
                             }
                         }
-
-                        function validBusiness(foundBusinesses, business, category, businesses, businessDay, day, time) {
-                            return (_.findWhere(foundBusinesses, business) == null && business.category === category && businessDay.open.day === day && businessIsOpenOnTime(businessDay, TIMES[time]))
-                        }
-
-                        function businessIsOpenOnTime(businessDay, time) {
-                            try {
-                                // If it's open, return true
-                                if (parseInt(businessDay.open.time) <= time) return true
-                                if (parseInt(businessDay.close.time) > time) return true
-                                // If the business closes on a different day, this means it is open past midnight, which
-                                // is before our cap
-                                if (businessDay.close.day != businessDay.open.day) return true
-                                return false
-                            } catch (e) {
-                                console.log("we got a big fat error on this business: ", businessDay)
-                                console.log("here was the error: ", e)
-                                return false
-                            }
-                        }
                     }
                 }
             })
-        }
 
-        /**
-         * This function takes the results that we initially got and sorts/filters them
-         * for the user. The sorting can be by price, distance to the user, rating, etc.
-         *
-         * Once we have sorted and chosen the businesses and their backups for the user, we will
-         * return this array and get more details for these businesses
-         *
-         * @param  {Int}        numberOfDaysInTrip         The number of days in the user's trip
-         * @param  {Array}      businesses                 The businesses that we are looking through
-         * @return {Array}      finalChoices               The final set of activities, food, etc for the user
-         */
-        function getListOfFinalBusinessesForUser(numberOfDaysInTrip, businesses) {
-            return new Promise((resolve, reject) => {
-                // Create an object with each category and subcategory, so that
-                // we can get the best options for the user
-                let data = {}
+            function businessIsOpenOnTime(businessDay, day, activity) {
+                let activityTime = moment(day + ' ' + activity.startTime)
+                let businessOpenTime = moment(day + ' ' + helpers.convert24HourIntToString(parseInt(businessDay.open.time)))
+                let businessCloseTime = moment(day + ' ' + helpers.convert24HourIntToString(parseInt(businessDay.close.time)))
 
-                for (var i = 0; i < businesses.length; i++) {
-                    let business = businesses[i]
-                    if (!data[business.category]) {
-                        data[business.category] = {}
-                    }
-
-                    if (!data[business.category][business.subcategory]) {
-                        data[business.category][business.subcategory] = []
-                    }
-
-                    data[business.category][business.subcategory].push(business)
-                }
-
-                // For each day, get three options - one main, and two backups
-                let finalBusinesses = []
-
-                // for each category
-                for (var i = 0; i < Object.keys(data).length; i++) {
-                    let category = Object.keys(data)[i]
-                    // for each subcategory
-                    for (var j = 0; j < Object.keys(data[category]).length; j++) {
-                        let subcategory = Object.keys(data[category])[j]
-                        let start = 0
-                        let end = (numberOfDaysInTrip * DAILY_PREFERENCE_COUNT[category] * 4)
-
-                        if (data[category][subcategory].length <= end) {
-                            finalBusinesses = finalBusinesses.concat(data[category][subcategory])
-                        } else {
-                            finalBusinesses = finalBusinesses.concat(data[category][subcategory].slice(start, end))
-                        }
-                    }
-                }
-
-                resolve(finalBusinesses)
-            })
+                if (businessOpenTime.isSameOrBefore(activityTime)) return true
+                if (businessCloseTime.isSameOrAfter(activityTime)) return true
+                if (businessDay.close.day != businessDay.open.day) return true
+                return false
+            }
         }
     }
 }
@@ -300,11 +130,11 @@ module.exports = {
  * Finds businesses from our providers - this function is 
  * a stub that call all of our helpers
  */
-function getListOfBusinessesFromProviders(data) {
+function getListOfBusinessesFromProviders(data, required) {
     return new Promise((resolve, reject) => {
         Promise.all([
-            GoogleHelper.findBusinesses(data),
-            YelpHelper.findBusinesses(data)
+            GoogleHelper.findBusinesses(data, required),
+            YelpHelper.findBusinesses(data, required)
         ]).then(businesses => {
             return resolve(businesses)
         })
@@ -357,17 +187,187 @@ function getGameData(id) {
 }
 
 /**
- * Gets the correct time slot for the game
- * @param  {Object} gameData The game data
- * @return {Object}          The time slot for the game
+ * Creates a trip stub from the user's preferences that they selected. This
+ * will then be used to fetch the appropriate businesse and resturants for
+ * the user
+ * @param  {Object} data The preferences that the user selected on the mobile app
+ * @return {Object}      An object of arrays - one for each day - representing the
+ * activites to fetch from our third party providers
  */
-function getActivityForGame(gameDateTimes, currentDay) {
-    let date = parseInt(moment(gameDateTimes.dateTime).format('HHmm'))
-    let keysOfTimes = Object.keys(TIMES)
-    for (var i = 0; i < keysOfTimes.length; i++) {
-        let activity = keysOfTimes[i]
-        if (i > 0 && date > TIMES[activity] && date <= TIMES[keysOfTimes[i + 1]] && moment(gameDateTimes.dateTime).isSame(moment(currentDay), 'day')) {
-            return activity
+function createTripStub(data) {
+
+    // Get the arrival and departure dates for the user's trip
+    let arrivalDate = moment(data.arrivalTime);
+    let departureDate = moment(data.departureTime);
+    let tripStub = {}
+
+    // Split the preferences into two groups:
+    //  1. Dining
+    //  2. Activities
+    // We are only setting 3 food choices per day, and the rest are unlimited
+
+    let food = data.preferences.food.map(option => {
+        return {
+            name: option,
+            category: 'food'
         }
+    })
+
+    let dayActivities = data.preferences.dayActivities.map(option => {
+        return {
+            name: option,
+            category: 'day'
+        }
+    })
+
+    let nightActivities = data.preferences.nightActivities.map(option => {
+        return {
+            name: option,
+            category: 'night'
+        }
+    })
+
+    diningOptions = helpers.shuffleArray(food)
+    dayActivities = helpers.shuffleArray(dayActivities)
+    nightActivities = helpers.shuffleArray(nightActivities)
+
+    // Now that we have split the user's choices into two groups, we can begin to create
+    // their trip stub
+
+    while (!finishedAddingActivities(arrivalDate, departureDate)) {
+        let currentDay = arrivalDate.format('MM-DD-YYYY')
+        let isGameDay = false
+
+        if (!tripStub[arrivalDate.format('MM-DD-YYYY')]) tripStub[arrivalDate.format('MM-DD-YYYY')] = []
+        if (data.gameData.dates.start.timeTBA && moment(data.gameData.dates.start.localDate).isSame(arrivalDate, 'day')) {
+            isGameDay = true
+        }
+
+        // Decide if we want to add a dining option or an activity
+        let foodOption = needToAddFoodOption(arrivalDate)
+        let option
+
+        if (foodOption) {
+            option = foodOption
+        } else if (parseInt(arrivalDate.format('HHmm')) > config.timeframes.dinner) {
+            option = nightActivities[0]
+        } else {
+            option = dayActivities[0]
+        }
+
+        // Make sure that option is not the same as the previous
+        while (tripStub[currentDay].length > 0 && option.name === _.last(tripStub[currentDay]).name) {
+            // Reshuffle our arrays
+            diningOptions = helpers.shuffleArray(food)
+            dayActivities = helpers.shuffleArray(dayActivities)
+            nightActivities = helpers.shuffleArray(nightActivities)
+
+            // Get the option
+            if (foodOption) {
+                option = foodOption
+                // We already have validation for food options, so we can break
+                break
+            } else if (parseInt(arrivalDate.format('HHmm')) > config.timeframes.dinner) {
+                if (nightActivities.length === 1) {
+                    console.log("\n\n\nGOT TO THE BREAK!!!!\n\n\n")
+                    break
+                }
+                option = nightActivities[0]
+            } else {
+                option = dayActivities[0]
+            }
+        }
+
+        option.startTime = arrivalDate.format('hh:mm:ss a')
+        console.log("option.startTime ", option.startTime)
+        tripStub[currentDay].push(option)
+        console.log("tripStub for " + currentDay + " is now: ", tripStub[currentDay])
+        console.log("\n")
+
+        // Reshuffle our arrays
+        diningOptions = helpers.shuffleArray(food)
+        dayActivities = helpers.shuffleArray(dayActivities)
+        nightActivities = helpers.shuffleArray(nightActivities)
+
+        // Add average duration of activity to day in minutes
+        arrivalDate.add(config.activityDuration[_.last(tripStub[currentDay]).name], 'm')
+
+        // If we've hust added lunch and it is game day, then we need to add the game and be finished
+        if (parseInt(arrivalDate.format('HHmm')) >= config.timeframes.lunch && isGameDay) {
+            let classification = data.gameData.classifications[0].subGenre.name + ' ' + data.gameData.classifications[0].genre.name
+            let timeOfGame = helpers.getTimeDurationForGame(classification)
+
+
+            tripStub[currentDay].push({
+                'category': 'game',
+                'title': data.gameData.name,
+                'classification': classification,
+                'time': 'TBA',
+                'isTBA': true
+            })
+
+            console.log("tripStub for " + currentDay + " is now: ", tripStub[currentDay])
+            console.log("\n")
+
+            arrivalDate.add(timeOfGame, 'm')
+
+            if (data.gameData.dates.start.timeTBA) {
+                arrivalDate.add(1, 'days');
+                arrivalDate.set('hour', 9);
+                arrivalDate.set('minute', 0);
+            }
+        }
+
+        // If we've reached the end of the day time (10:00pm as of 06/02/2018), increase the day
+        if (arrivalDate.isBefore(departureDate) && parseInt(arrivalDate.format('HHmm')) >= config.timeframes.endOfDay) {
+            // We are done for the day - add one day and reset the time to 9:00am
+            arrivalDate.add(1, 'days');
+            arrivalDate.set('hour', 9);
+            arrivalDate.set('minute', 0);
+        }
+    }
+
+    return tripStub
+
+
+    // Helper functions
+
+    function finishedAddingActivities(arrivalDate, departureDate) {
+        return (arrivalDate.isSameOrAfter(moment(departureDate, 'day')) && (arrivalDate.format('HH:mm:ss') >= departureDate.format('HH:mm:ss')))
+    }
+
+    /**
+     * Checks to see if we need to add a food option to the trip stub
+     * @param  {Moment} arrivalDate     MomentJS Date of the arrival date
+     * @return {Boolean}                True/False if we need to add a food choice
+     */
+    function needToAddFoodOption(arrivalDate) {
+        let time = parseInt(arrivalDate.format('HHmm'))
+        let currentDay = tripStub[arrivalDate.format('MM-DD-YYYY')]
+        // Convert our timeframes into Moment Dates in 24 hour format
+
+        let dinnerTime = moment(arrivalDate.format('MM-DD-YYYY') + ' ' + helpers.convert24HourIntToString(config.timeframes.dinner))
+        let lunchTime = moment(arrivalDate.format('MM-DD-YYYY') + ' ' + helpers.convert24HourIntToString(config.timeframes.lunch))
+        let breakfastTime = moment(arrivalDate.format('MM-DD-YYYY') + ' ' + helpers.convert24HourIntToString(config.timeframes.breakfast))
+
+        if (Math.abs(moment.duration(dinnerTime.diff(arrivalDate)).asMinutes()) <= 60 && !alreadyHaveFoodOptionForTheDay(currentDay, 'dinner')) {
+            diningOptions[0].timeframe = 'dinner'
+            return diningOptions[0]
+        } else if (Math.abs(moment.duration(lunchTime.diff(arrivalDate)).asMinutes()) <= 60 && !alreadyHaveFoodOptionForTheDay(currentDay, 'lunch')) {
+            diningOptions[0].timeframe = 'lunch'
+            return diningOptions[0]
+        } else if (Math.abs(moment.duration(breakfastTime.diff(arrivalDate)).asMinutes()) <= 60 && !alreadyHaveFoodOptionForTheDay(currentDay, 'breakfast')) {
+            diningOptions[0].timeframe = 'breakfast'
+            return diningOptions[0]
+        }
+
+        return false
+    }
+
+
+    function alreadyHaveFoodOptionForTheDay(currentDay, foodOption) {
+        return currentDay.some(option => {
+            return option.timeframe === foodOption
+        })
     }
 }

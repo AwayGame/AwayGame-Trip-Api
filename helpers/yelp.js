@@ -3,17 +3,11 @@ const yelp = require('yelp-fusion')
 const queue = require('async/queue')
 const helpers = require('./helpers')
 const YelpClient = yelp.client(config.yelp.fusionApiKey);
-const YELP_PRICE_TO_DOUBLE = {
-    '$': 1.25,
-    '$$': 2.5,
-    '$$$': 3.75,
-    '$$$$': 5
-}
 
 module.exports = {
-    findBusinesses: (data) => {
+    findBusinesses: (data, required) => {
         return new Promise((resolve, reject) => {
-            searchForBusinesses(data).then(results => {
+            searchForBusinesses(data, required).then(results => {
                 return resolve(results)
             })
         })
@@ -33,104 +27,82 @@ module.exports = {
  * 
  */
 
-function searchForBusinesses(data) {
+function searchForBusinesses(data, required) {
     return new Promise((resolve, reject) => {
         let searches = 0
-        let totalCategories = 0
-        Object.keys(data.preferences).forEach(key => {
-            totalCategories += data.preferences[key].length
-        })
-
+        let totalCategories = Object.keys(required).length
         let finalResults = []
+        let lat = data.lat
+        let long = data.long
 
         // Search
-        Object.keys(data.preferences).forEach(category => {
-            data.preferences[category].forEach(subcategory => {
+        Object.keys(required).forEach(activity => {
+            let preference = required[activity].category + '-' + activity
+            let key = redisHelper.getKey(lat, long, 'yelp', preference)
+            console.log("checking this key in redis: ", key)
 
-                let lat = data.lat
-                let long = data.long
-                let preference = category + '-' + subcategory
-                let key = redisHelper.getKey(lat, long, 'yelp', preference)
+            redisHelper.get(key).then(cachedData => {
+                if (cachedData) {
+                    //@TODO: Check if cachedData length is enough. If not, get more
+                    finalResults = finalResults.concat(cachedData.results)
+                    searches++
+                    if (searches === totalCategories) {
+                        finalResults = helpers.removeDuplicates(finalResults, 'id')
+                        finalResults = helpers.addProvider(finalResults, 'yelp')
+                        return resolve(finalResults)
+                    }
+                } else {
+                    YelpClient.search({
+                        term: getYelpConfigDataByKey(activity, 'term'),
+                        categories: getYelpConfigDataByKey(activity, 'categories'),
+                        latitude: lat,
+                        longitude: long,
+                        sortBy: 'rating',
+                        limit: required[activity].count,
+                        radius: helpers.milesToRadius(data.radius)
+                    }).then(response => {
+                        if (response.jsonBody.businesses.length) {
+                            response.jsonBody.businesses.forEach(business => {
+                                business.category = required[activity].category
+                                business.subcategory = activity
+                            })
 
-                redisHelper.get(key).then(cachedData => {
-                    if (cachedData) {
-                        finalResults = finalResults.concat(cachedData.results)
+                            finalResults = finalResults.concat(response.jsonBody.businesses)
+
+                            // Cache the Yelp result
+                            redisHelper.set(key, {
+                                results: response.jsonBody.businesses
+                            })
+                        }
+
                         searches++
+
                         if (searches === totalCategories) {
                             finalResults = helpers.removeDuplicates(finalResults, 'id')
                             finalResults = helpers.addProvider(finalResults, 'yelp')
                             return resolve(finalResults)
                         }
-                    } else {
-                        YelpClient.search({
-                            term: getSearchTerm(category, subcategory),
-                            categories: getCategories(category, subcategory),
-                            latitude: data.lat,
-                            longitude: data.long,
-                            sortBy: 'rating',
-                            limit: 50,
-                            radius: helpers.milesToRadius(data.radius)
-                        }).then(response => {
-                            if (response.jsonBody.businesses.length) {
-                                response.jsonBody.businesses.forEach(business => {
-                                    if (category === 'dayActivities') {
-                                        business.category = category
-                                        business.subcategory = subcategory
-                                    } else if (category === 'nightActivities') {
-                                        business.category = category
-                                        business.subcategory = subcategory
-                                    } else if (category === 'food') {
-                                        business.category = category
-                                        business.subcategory = subcategory
-                                    }
-                                })
-
-                                finalResults = finalResults.concat(response.jsonBody.businesses)
-
-                                // Cache the Yelp result
-                                redisHelper.set(key, {
-                                    results: response.jsonBody.businesses
-                                })
-                            }
-
-                            searches++
-
-                            if (searches === totalCategories) {
-                                finalResults = helpers.removeDuplicates(finalResults, 'id')
-                                finalResults = helpers.addProvider(finalResults, 'yelp')
-                                return resolve(finalResults)
-                            }
-                        }).catch(e => {
-                            console.log(e);
-                        });
-                    }
-                })
+                    }).catch(e => {
+                        console.log(e);
+                    });
+                }
             })
         })
     })
 
-    function getSearchTerm(category, subcategory) {
-        if (category === 'dayActivities') {
-            return config.yelp.dayActivities[subcategory].term
-        } else if (category === 'nightActivities') {
-            return config.yelp.nightActivities[subcategory].term
-        } else if (category === 'food') {
-            return config.yelp.foodCategories[subcategory].term
-        }
-    }
-
-    function getCategories(category, subcategory) {
-        if (category === 'dayActivities') {
-            return config.yelp.dayActivities[subcategory].categories
-        } else if (category === 'nightActivities') {
-            return config.yelp.nightActivities[subcategory].categories
-        } else if (category === 'food') {
-            return config.yelp.foodCategories[subcategory].categories
+    function getYelpConfigDataByKey(activity, key) {
+        if (required[activity].category === 'day') {
+            return config.yelp.dayActivities[activity][key]
+        } else if (required[activity].category === 'night') {
+            return config.yelp.nightActivities[activity][key]
+        } else if (required[activity].category === 'food') {
+            return config.yelp.foodCategories[activity][key]
         }
     }
 }
 
 function getBusinessesInMoreDetail(businesses) {
+    console.log("In yelp - getting " + businesses.length + " businesses in more detail")
     return new Promise((resolve, reject) => {
         if (!businesses || !businesses.length) return resolve([])
 
@@ -187,7 +159,7 @@ function getBusinessesInMoreDetail(businesses) {
             hours: getHours(business),
             reviews: business.reviews,
             photos: business.photos,
-            price: YELP_PRICE_TO_DOUBLE[business.price],
+            price: config.yelp.YELP_PRICE_TO_DOUBLE[business.price],
             rating: business.rating,
             category: business.category,
             subcategory: business.subcategory

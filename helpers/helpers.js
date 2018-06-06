@@ -1,5 +1,4 @@
 const _ = require('underscore')
-// Helper functions
 
 module.exports = {
     checkForMissingFields: (requiredParams, data) => {
@@ -44,9 +43,39 @@ module.exports = {
         return array
     },
     removeIfNoValueByKey: (array, key) => {
-        array = _.filter(array, function(obj) { 
+        array = _.filter(array, function(obj) {
             return obj[key] !== undefined && obj[key] !== null
         })
         return array
+    },
+    convert24HourIntToString: (time) => {
+        let timeStr = (time < 1000) ? ("0" + String(time)) : String(time)
+        return timeStr.substring(0, 2) + ':' + timeStr.substring(2, timeStr.length);
+    },
+    getTimeDurationForGame: (type) => {
+        switch (type) {
+            case 'College Football':
+                return config.activityDuration['NCAAFB']
+                break;
+            default:
+                return 180;
+        }
+    },
+    getRequiredBusinessesFromTripStub: (tripStub) => {
+        let required = {}
+
+        Object.keys(tripStub).forEach(day => {
+            tripStub[day].forEach(a => {
+                if (a.name) {
+                    if (!required[a.name]) required[a.name] = {
+                        category: a.category,
+                        count: 0
+                    }
+
+                    required[a.name].count += 4
+                }
+            })
+        })
+        return required
     }
 }
