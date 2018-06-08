@@ -255,7 +255,7 @@ async function getBusinessesInMoreDetail(businesses) {
         function getPhotoIds(business) {
             if (!business.photos) return []
             return business.photos.map(photo => {
-                return photo.photo_reference
+                return config.google.photosUrl + "?key=" + config.google.placesApiKey + "&photoreference=" + photo.photo_reference + "&maxwidth=400"
             })
         }
     }

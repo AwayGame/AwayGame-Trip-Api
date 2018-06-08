@@ -44,11 +44,11 @@ module.exports = {
                     initialListOfBusinesses = helpers.removeDuplicates(initialListOfBusinesses, 'name')
                     // Sort by user preferences
                     initialListOfBusinesses = sortByUserPreferenceAndRemoveBusinessesWithoutRequiredParameters(initialListOfBusinesses, data.preferences)
-                    
+
                     let finalListOfBusinesses = {}
                     initialListOfBusinesses.forEach(b => {
                         if (!finalListOfBusinesses[b.subcategory]) finalListOfBusinesses[b.subcategory] = []
-                        if(finalListOfBusinesses[b.subcategory].length < required[b.subcategory].count){
+                        if (finalListOfBusinesses[b.subcategory].length < required[b.subcategory].count) {
                             finalListOfBusinesses[b.subcategory].push(b)
                         }
                     })
@@ -80,7 +80,15 @@ module.exports = {
                 console.log("done!")
                 console.log("returning the trip")
 
-                return resolve(tripStub)
+                let tripResponse = {
+                    "itineraries": Object.keys(tripStub).map(tripStubKey => {
+                        return {
+                            "activities": tripStub[tripStubKey]
+                        }
+                    })
+                }
+
+                return resolve(tripResponse)
 
                 function getBusinessAndBackupOpenAtAvailableTime(day) {
                     let foundBusinesses = []
