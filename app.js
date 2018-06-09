@@ -17,6 +17,7 @@ app.use(cors({ origin: true }))
 
 app.post('/api/trip', async (req, res) => {
     let trip = await API.Trip.createTrip(req.body)
+    delete req.body.gameData
     trip.preferencesUsed = req.body
     return res.send(trip)
 })
