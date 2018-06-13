@@ -23,29 +23,77 @@ module.exports = {
         startNewTrip(data)
         setPreferencesToSearchOn(data)
 
-        while (!finishedAddingActivities()) {
+        while (!isLastDay()) {
             addNewActivitiesArrayIfNewDay()
-            getOption()
+            // Get breakfast option
+            getFoodOption()
+            // Get activities up to lunch
+            addActivitiesFromNowUntilTimeframe('lunch', dayActivities)
+            // Get lunch
+            getFoodOption()
 
-            // Make sure that option is not the same as the previous
-            while (previousOptionIsTheSameAsCurrentOption(option)) {
-                getOption()
-            }
+            // Now that we have added lunch, we need to see if the game
+            // is on the current day. If it is, then we need to add it.
+            // However, if the game time is TBA, we need to only add the
+            // game and then go to the next day
 
-            console.log("option: " + option.category + " - " + option.name)
-            addOptionToTrip(option)
-
-            // If we've reached the end of the day time (10:00pm as of 06/02/2018), increase the day
-            if (isEndOfDay()) {
-                console.log("at the end of the day...")
-                console.log("**********************************")
-                console.log("here's what we got!: ", tripStub[currentDay])
-                console.log("\n")
+            if (needToAddGame()) {
+                addGameAndRestOfDayActivities()
+            } else {
+                // Get activities up to dinner
+                addActivitiesFromNowUntilTimeframe('dinner', dayActivities)
+                // Get dinner
+                getFoodOption()
+                // Get activities for the rest of the night
+                addActivitiesFromNowUntilTimeframe('endOfDay', nightActivities)
                 goToNextDay()
             }
         }
 
-        return tripStub
+        // Now that we are here, we need to add activities up to the departure
+        // time
+
+        //@TODO: FIX THIS BELOW - VERY BAD CODE
+        if (finishedAddingActivities()) {
+            return tripStub
+        }
+        
+        addNewActivitiesArrayIfNewDay()
+        getFoodOption()
+        
+        if (finishedAddingActivities()) {
+            return tripStub
+        }
+        
+        addActivitiesFromNowUntilTimeframe('lunch', dayActivities)
+
+        if (finishedAddingActivities()) {
+            return tripStub
+        }
+
+        getFoodOption()
+        
+        if (finishedAddingActivities()) {
+            return tripStub
+        }
+        
+        addActivitiesFromNowUntilTimeframe('dinner', dayActivities)
+        
+        if (finishedAddingActivities()) {
+            return tripStub
+        }
+        
+        getFoodOption()
+        
+        if (finishedAddingActivities()) {
+            return tripStub
+        }
+        
+        addActivitiesFromNowUntilTimeframe('endOfDay', nightActivities)
+        
+        if (finishedAddingActivities()) {
+            return tripStub
+        }
     }
 }
 
@@ -55,7 +103,7 @@ module.exports = {
  * @return {Boolean}
  */
 function finishedAddingActivities() {
-    return (arrivalDate.isSameOrAfter(moment(departureDate, 'day')) && (arrivalDate.format('HH:mm:ss') >= departureDate.format('HH:mm:ss')))
+    return isLastDay() && (arrivalDate.format('HH:mm:ss') >= departureDate.format('HH:mm:ss'))
 }
 
 /**
@@ -82,39 +130,22 @@ function needToAddFoodOption() {
  * @return {Void} This function does not return anything
  */
 function needToAddGame() {
-    if (!hasGameBeenAdded() && isGameDay()) {
-        if (!game.isTBA && Math.abs(moment.duration(arrivalDate.diff(moment(game.date))).asMinutes()) <= 60) {
-            console.log("It's game day and the time is announced!")
-            console.log("ADDDDDDDDDD")
-            // The game time is set. Check to see if we are ready to add it
-        } else if (parseInt(arrivalDate.format('HHmm')) >= config.timeframes.lunch) {
-            tripStub[arrivalDate.format('MM-DD-YYYY')].push(game)
-            let timeOfGame = helpers.getTimeDurationForGame(game.classification)
-            arrivalDate.add(timeOfGame, 'm')
-            arrivalDate.add(1, 'days');
-            arrivalDate.set('hour', 9);
-            arrivalDate.set('minute', 0);
-        }
-    }
+    return !hasGameBeenAdded() && isGameDay()
 }
 
-function addGame() {
-    if (!hasGameBeenAdded() && isGameDay()) {
-        console.log("IT'S GAME DAY! :D")
-        console.log("Math.abs(moment.duration(arrivalDate.diff(moment(game.date))).asMinutes()): ", Math.abs(moment.duration(arrivalDate.diff(moment(game.date))).asMinutes()))
-        if (!game.isTBA && Math.abs(moment.duration(arrivalDate.diff(moment(game.date))).asMinutes()) <= 60) {
-            console.log("It's game day and the time is announced!")
-            console.log("ADDDDDDDDDD")
-            // The game time is set. Check to see if we are ready to add it
-        } else if (parseInt(arrivalDate.format('HHmm')) >= config.timeframes.lunch) {
-            tripStub[arrivalDate.format('MM-DD-YYYY')].push(game)
-            let timeOfGame = helpers.getTimeDurationForGame(game.classification)
-            arrivalDate.add(timeOfGame, 'm')
-            arrivalDate.add(1, 'days');
-            arrivalDate.set('hour', 9);
-            arrivalDate.set('minute', 0);
-        }
+
+
+function addGameAndRestOfDayActivities() {
+    if (!game.isTBA) {
+        // We have already added lunch at this point. We just need to add
+        // activities/food options until the game time.
+        addActivitiesFromNowUntilTimeframe('dinner', dayActivities, true)
     }
+
+    tripStub[currentDay].push(game)
+    let timeOfGame = helpers.getTimeDurationForGame(game.classification)
+    arrivalDate.add(timeOfGame, 'm')
+    goToNextDay()
 }
 
 /**
@@ -132,29 +163,6 @@ function isGameDay() {
  */
 function hasGameBeenAdded() {
     return _.contains(tripStub[currentDay], game)
-}
-
-/**
- * Initialization function that sets our variables for a new trip stub
- * @param  {Object} data    The data that the user passed to the server
- * @return {Void}           This function does not return anything
- */
-function startNewTrip(data) {
-    tripStub = {}
-    arrivalDate = moment(data.arrivalTime);
-    departureDate = moment(data.departureTime);
-    currentDay = arrivalDate.format('MM-DD-YYYY')
-    dinnerTime = moment(currentDay + ' ' + helpers.convert24HourIntToString(config.timeframes.dinner))
-    lunchTime = moment(currentDay + ' ' + helpers.convert24HourIntToString(config.timeframes.lunch))
-    breakfastTime = moment(currentDay + ' ' + helpers.convert24HourIntToString(config.timeframes.breakfast))
-    game = {
-        'category': 'game',
-        'title': data.gameData.name,
-        'classification': data.gameData.classification,
-        'startTime': moment(data.gameData.startTime).format('hh:mm:ss a'),
-        'date': data.gameData.startTime,
-        'isTBA': data.gameData.isTBA
-    }
 }
 
 /**
@@ -184,6 +192,8 @@ function setPreferencesToSearchOn(data) {
             category: 'night'
         }
     })
+
+    shuffleOptions()
 }
 
 /**
@@ -191,27 +201,9 @@ function setPreferencesToSearchOn(data) {
  * @return {Void} This function does not return anything
  */
 function shuffleOptions() {
-    diningOptions = helpers.shuffleArray(food)
-    dayActivities = helpers.shuffleArray(dayActivities)
-    nightActivities = helpers.shuffleArray(nightActivities)
-}
-
-/**
- * Gets the next activity for the user's trip for the current day
- * @return {Void} This function does not return anything
- */
-function getOption() {
-    shuffleOptions()
-
-    if (needToAddFoodOption()) {
-        option = getFoodOption()
-    } else if (parseInt(arrivalDate.format('HHmm')) > config.timeframes.dinner) {
-        option = getNightActivity()
-    } else {
-        option = getDayActivity()
-    }
-
-    option.startTime = arrivalDate.format('hh:mm:ss a')
+    diningOptions = _.shuffle(food)
+    dayActivities = _.shuffle(dayActivities)
+    nightActivities = _.shuffle(nightActivities)
 }
 
 /**
@@ -220,13 +212,10 @@ function getOption() {
  * @return  {Void}          This function does not return anything
  */
 function addOptionToTrip(option) {
+    option.startTime = arrivalDate.format('hh:mm:ss a')
     let optionToAdd = Object.assign({}, option)
-
     tripStub[currentDay].push(optionToAdd)
-    // Add average duration of activity to day in minutes
     arrivalDate.add(config.activityDuration[optionToAdd.name], 'm')
-    console.log("This is it now: ", tripStub[currentDay])
-    console.log("\n\n")
 }
 
 /**
@@ -245,10 +234,11 @@ function goToNextDay() {
     arrivalDate.add(1, 'days');
     arrivalDate.set('hour', 9);
     arrivalDate.set('minute', 0);
-    currentDay = arrivalDate.format('MM-DD-YYYY')
-    dinnerTime = moment(currentDay + ' ' + helpers.convert24HourIntToString(config.timeframes.dinner))
-    lunchTime = moment(currentDay + ' ' + helpers.convert24HourIntToString(config.timeframes.lunch))
-    breakfastTime = moment(currentDay + ' ' + helpers.convert24HourIntToString(config.timeframes.breakfast))
+    currentDay = arrivalDate.format('YYYY-MM-DD')
+    dinnerTime = moment(currentDay + helpers.convert24HourIntToString(config.timeframes.dinner))
+    lunchTime = moment(currentDay + helpers.convert24HourIntToString(config.timeframes.lunch))
+    breakfastTime = moment(currentDay + helpers.convert24HourIntToString(config.timeframes.breakfast))
+    endOfDay = moment(currentDay + helpers.convert24HourIntToString(config.timeframes.endOfDay))
 }
 
 /**
@@ -273,7 +263,7 @@ function previousOptionIsTheSameAsCurrentOption(option) {
 
 /**
  * Gets a food option for the user's trip stub
- * @return {Object}     The food option for the user's trip
+ * @return {Void}     This function does not return anything
  */
 function getFoodOption() {
     while (!foodOptionIsValid(diningOptions[0])) {
@@ -282,7 +272,7 @@ function getFoodOption() {
 
     let foodOption = diningOptions[0]
     foodOption.timeframe = getFoodTimeframeFromCurrentTime()
-    return foodOption
+    addOptionToTrip(foodOption)
 }
 
 /**
@@ -343,49 +333,125 @@ function getFoodTimeframeFromCurrentTime() {
     }
 }
 
-function getNightActivity() {
-
-    // if(Math.abs(moment.duration(breakfastTime.diff(arrivalDate)).asMinutes())) {
-    //     return nightActivities[0]
-    // }
-    return nightActivities[0]
-}
-
-function getDayActivity() {
-    let beforeDinner = arrivalDate.isBefore(dinnerTime)
-    let beforeLunch = arrivalDate.isBefore(lunchTime)
-
-    if (beforeDinner & !beforeLunch) {
-        // We are in between dinner and lunch. Let's check to see
-        // how close we are to dinner
-        let timeToDinner = getDifferenceInMinutesToTimeframeFromCurrentTime('dinner')
-        console.log("time to dinner: ", timeToDinner)
-
-        dayActivities.forEach(a => {
-            if(config.activityDuration[a.name] > timeToDinner){
-                console.log("\n\nUHOH")
-            }
-        })
-
-        return dayActivities[0]
-    } else if (beforeLunch) {
-        console.log("Checking to see how close we are to lunch")
-        console.log("here is lunch: ", getDifferenceInMinutesToTimeframeFromCurrentTime('lunch'))
-    }
-
-    return dayActivities[0]
-}
-
-function getDifferenceInMinutesToTimeframeFromCurrentTime(timeframe) {
+function getTimeLeftInMinutesFromTimeframeToNextFoodOption(timeframe) {
     switch (timeframe) {
-        case 'breakfast':
-            return Math.abs(moment.duration(breakfastTime.diff(arrivalDate)).asMinutes())
-            break;
         case 'lunch':
-            return Math.abs(moment.duration(lunchTime.diff(arrivalDate)).asMinutes())
+            return Math.abs(moment.duration(arrivalDate.diff(lunchTime)).asMinutes())
             break;
         case 'dinner':
-            return Math.abs(moment.duration(dinnerTime.diff(arrivalDate)).asMinutes())
+            return Math.abs(moment.duration(arrivalDate.diff(dinnerTime)).asMinutes())
+            break;
+        case 'endOfDay':
+            return Math.abs(moment.duration(arrivalDate.diff(endOfDay)).asMinutes())
             break;
     }
+}
+
+function addActivitiesFromNowUntilTimeframe(timeframe, activities, accountForGame = false) {
+    let time, activitiesToReturn
+
+    if (accountForGame) {
+        // Take off two hours to account for travel to the stadium and dining options if needed
+        time = Math.abs(moment.duration(arrivalDate.diff(moment(game.date))).asMinutes()) - 150
+        activitiesToReturn = findAllCombinationsOfActivitiesForGivenTime(activities, time)
+        activitiesToReturn.forEach(a => addOptionToTrip(a))
+        getFoodOption()
+
+    } else {
+        time = getTimeLeftInMinutesFromTimeframeToNextFoodOption(timeframe)
+        activitiesToReturn = findAllCombinationsOfActivitiesForGivenTime(activities, time)
+        activitiesToReturn.forEach(a => addOptionToTrip(a))
+    }
+}
+
+function findAllCombinationsOfActivitiesForGivenTime(activities, target) {
+    let results = [];
+    let listOfTimes = activities.map(a => config.activityDuration[a.name])
+    let maxTimeUserCanSpend = _.reduce(listOfTimes, function(memo, num) {
+        return memo + num;
+    }, 0);
+
+
+    if (target > maxTimeUserCanSpend) {
+        target = maxTimeUserCanSpend
+    }
+
+    function recurse(start, leftOver, selection) {
+        if (leftOver < 0) {
+            return; // failure
+        }
+
+        if (leftOver === 0) {
+            results.push(selection);
+            return;
+        }
+
+        for (var i = start; i < activities.length; i++) {
+            recurse(i, leftOver - config.activityDuration[activities[i].name], selection.concat(activities[i]));
+        }
+    }
+
+    recurse(0, target, []);
+
+
+    let datasets = getDatasetsWithNoRepeats(results)
+
+    while (!datasets.length) {
+        results = []
+        target += 5
+        recurse(0, target, [])
+        datasets = getDatasetsWithNoRepeats(results)
+    }
+
+    datasets = _.shuffle(datasets)
+    return datasets[0]
+}
+
+function getDatasetsWithNoRepeats(data) {
+    let datasetsToReturn = []
+
+    for (var i = 0; i < data.length; i++) {
+        let dataset = data[i]
+        var dupArr = [];
+        var groupedByCount = _.countBy(dataset, function(item) {
+            return item.name;
+        });
+
+        let arrayHasNoDuplicates = _.every(Object.values(groupedByCount), function(num) {
+            return num === 1
+        });
+
+        if (arrayHasNoDuplicates) {
+            datasetsToReturn.push(dataset)
+        }
+    }
+    return datasetsToReturn
+}
+
+/**
+ * Initialization function that sets our variables for a new trip stub
+ * @param  {Object} data    The data that the user passed to the server
+ * @return {Void}           This function does not return anything
+ */
+function startNewTrip(data) {
+    tripStub = {}
+    arrivalDate = moment(data.arrivalTime);
+    departureDate = moment(data.departureTime);
+    currentDay = arrivalDate.format('YYYY-MM-DD')
+    dinnerTime = moment(currentDay + helpers.convert24HourIntToString(config.timeframes.dinner))
+    lunchTime = moment(currentDay + helpers.convert24HourIntToString(config.timeframes.lunch))
+    breakfastTime = moment(currentDay + helpers.convert24HourIntToString(config.timeframes.breakfast))
+    endOfDay = moment(currentDay + helpers.convert24HourIntToString(config.timeframes.endOfDay))
+    game = {
+        'category': 'game',
+        'title': data.gameData.name,
+        'classification': data.gameData.classification,
+        'timeUserShouldGetToStadium': moment(data.gameData.startTime).subtract(1, 'hours'),
+        'date': data.gameData.startTime,
+        'isTBA': data.gameData.isTBA
+    }
+}
+
+function isLastDay() {
+    return arrivalDate.isSameOrAfter(moment(departureDate, 'day'))
 }

@@ -14,19 +14,6 @@ module.exports = {
     milesToRadius: (miles) => {
         return config.milesToRadiusConversions[miles]
     },
-    shuffleArray: (array) => {
-        var currentIndex = array.length,
-            temporaryValue, randomIndex;
-
-        while (0 !== currentIndex) {
-            randomIndex = Math.floor(Math.random() * currentIndex);
-            currentIndex -= 1;
-            temporaryValue = array[currentIndex];
-            array[currentIndex] = array[randomIndex];
-            array[randomIndex] = temporaryValue;
-        }
-        return array;
-    },
     removeDuplicates: (array, key) => {
         return array.filter((item, index, self) => self.findIndex(b => b[key] === item[key]) === index)
     },
@@ -50,7 +37,8 @@ module.exports = {
     },
     convert24HourIntToString: (time) => {
         let timeStr = (time < 1000) ? ("0" + String(time)) : String(time)
-        return timeStr.substring(0, 2) + ':' + timeStr.substring(2, timeStr.length);
+        let finalStr = 'T' + timeStr.substring(0, 2) + ':' + timeStr.substring(2, timeStr.length) + ':00'
+        return finalStr
     },
     getTimeDurationForGame: (type) => {
         switch (type) {
@@ -60,6 +48,8 @@ module.exports = {
             case 'NBA Basketball':
                 return config.activityDuration['NCAAFB']
                 break;
+            case 'NFL Football':
+                return config.activityDuration['NFL']
             default:
                 return 180;
         }
@@ -80,5 +70,15 @@ module.exports = {
             })
         })
         return required
+    },
+    moveArrayElement: (arr, old_index, new_index) => {
+        if (new_index >= arr.length) {
+            var k = new_index - arr.length + 1;
+            while (k--) {
+                arr.push(undefined);
+            }
+        }
+        arr.splice(new_index, 0, arr.splice(old_index, 1)[0]);
+        return arr;
     }
 }
