@@ -67,7 +67,7 @@ async function getListOfBusinessesFromProviders(data, required) {
     return new Promise(async(resolve, reject) => {
         let businesses = await Promise.all([
             GoogleHelper.findBusinesses(data, required),
-            //YelpHelper.findBusinesses(data, required)
+            YelpHelper.findBusinesses(data, required)
         ])
 
         return resolve(businesses)
@@ -87,7 +87,7 @@ function getMoreDetails(businesses) {
 
         Promise.all([
             GoogleHelper.getMoreDetails(data['google']),
-            //YelpHelper.getMoreDetails(data['yelp'])
+            YelpHelper.getMoreDetails(data['yelp'])
         ]).then(businesses => {
             return resolve(businesses)
         })

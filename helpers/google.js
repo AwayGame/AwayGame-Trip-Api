@@ -208,7 +208,8 @@ async function getBusinessesInMoreDetail(businesses) {
             price: business.price_level,
             rating: business.rating,
             category: business.category,
-            subcategory: business.subcategory
+            subcategory: business.subcategory,
+            mapsUrl: formatMapsUrl(business.geometry.location.lat, business.geometry.location.lng)
         }
 
         /**
@@ -219,14 +220,13 @@ async function getBusinessesInMoreDetail(businesses) {
         function getLocation(business) {
             return {
                 lat: business.geometry.location.lat,
-                long: business.geometry.location.lng,
-                mapsUrl: formatMapsUrl(business.geometry.location.lat, business.geometry.location.lng)
+                long: business.geometry.location.lng
             }
+        }
 
-            function formatMapsUrl(lat, lng) {
-                let latLngStr = lat + "," + lng
-                return "https://maps.googleapis.com/maps/api/staticmap?center=" + latLngStr + "&markers=color:0x82CA75|" + latLngStr + "&zoom=15&size=300x150&scale=2&key=" + config.google.mapStaticApiKey
-            }
+        function formatMapsUrl(lat, lng) {
+            let latLngStr = lat + "," + lng
+            return "https://maps.googleapis.com/maps/api/staticmap?center=" + latLngStr + "&markers=color:0x82CA75|" + latLngStr + "&zoom=15&size=300x150&scale=2&key=" + config.google.mapStaticApiKey
         }
 
         /**

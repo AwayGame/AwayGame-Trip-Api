@@ -137,10 +137,24 @@ function getBusinessesInMoreDetail(businesses) {
     })
 
     function getBusiness(id) {
-        return new Promise((resolve, reject) => {
-            YelpClient.business(id).then((response) => {
-                return resolve(response.jsonBody)
-            })
+        return new Promise(async (resolve, reject) => {
+            let fetchedBusiness = await fetch(id)
+
+            while(!fetchedBusiness){
+                fetchedBusiness = await fetch(id)
+            }
+
+            return resolve(fetchedBusiness)
+
+            function fetch(id) {
+                return new Promise((resolve, reject) => {
+                    YelpClient.business(id).then((response) => {
+                        return resolve(response.jsonBody)
+                    }).catch(error => {
+                        return resolve(error)
+                    })
+                })
+            }
         })
     }
 
@@ -164,6 +178,7 @@ function getBusinessesInMoreDetail(businesses) {
             phone: business.display_phone,
             address: business.location.display_address.join(', '),
             location: getLocation(business),
+            mapsUrl: formatMapsUrl(business.coordinates.latitude, business.coordinates.longitude),
             website: null,
             hours: getHours(business),
             reviews: business.reviews,
@@ -182,14 +197,13 @@ function getBusinessesInMoreDetail(businesses) {
         function getLocation(business) {
             return {
                 lat: business.coordinates.latitude,
-                long: business.coordinates.longitude,
-                mapsUrl: formatMapsUrl(business.coordinates.latitude, business.coordinates.longitude)
+                long: business.coordinates.longitude
             }
+        }
 
-            function formatMapsUrl(lat, lng) {
-                let latLngStr = lat + "," + lng
-                return "https://maps.googleapis.com/maps/api/staticmap?center=" + latLngStr + "&markers=color:0x82CA75|" + latLngStr + "&zoom=15&size=300x150&scale=2&key=" + config.google.mapStaticApiKey
-            }
+        function formatMapsUrl(lat, lng) {
+            let latLngStr = lat + "," + lng
+            return "https://maps.googleapis.com/maps/api/staticmap?center=" + latLngStr + "&markers=color:0x82CA75|" + latLngStr + "&zoom=15&size=300x150&scale=2&key=" + config.google.mapStaticApiKey
         }
 
         /**

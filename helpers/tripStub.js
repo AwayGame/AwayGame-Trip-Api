@@ -216,7 +216,6 @@ function addOptionToTrip(option) {
     let optionToAdd = Object.assign({}, option)
     tripStub[currentDay].push(optionToAdd)
     arrivalDate.add(config.activityDuration[optionToAdd.name], 'm')
-    
     if(option.additionalTime) {
         arrivalDate.add(option.additionalTime, 'm')
         delete option.additionalTime
@@ -271,9 +270,15 @@ function previousOptionIsTheSameAsCurrentOption(option) {
  * @return {Void}     This function does not return anything
  */
 function getFoodOption() {
+    if(diningOptions.length < 3) {
+        shuffleOptions()
+        return diningOptions[0]
+    }
+
     while (!foodOptionIsValid(diningOptions[0])) {
         shuffleOptions()
     }
+
 
     let foodOption = diningOptions[0]
     foodOption.timeframe = getFoodTimeframeFromCurrentTime()
