@@ -3,6 +3,7 @@ const yelp = require('yelp-fusion')
 const queue = require('async/queue')
 const helpers = require('./helpers')
 const YelpClient = yelp.client(config.yelp.fusionApiKey);
+const async = require('async')
 
 module.exports = {
     findBusinesses: (data, required) => {
@@ -28,6 +29,7 @@ module.exports = {
  */
 
 function searchForBusinesses(data, required) {
+    console.log("here here!")
     return new Promise((resolve, reject) => {
         let searches = 0
         let totalCategories = Object.keys(required).length
@@ -35,63 +37,58 @@ function searchForBusinesses(data, required) {
         let lat = data.lat
         let long = data.long
 
-        // Search
-        Object.keys(required).forEach(activity => {
+        let requestObjects = Object.keys(required).map(activity => {
             let preference = required[activity].category + '-' + activity
-            let key = redisHelper.getKey(lat, long, 'yelp', preference)
-            console.log("checking this key in redis: ", key)
 
-            redisHelper.get(key).then(cachedData => {
+            return {
+                preference: preference,
+                key: redisHelper.getKey(lat, long, 'yelp', preference),
+                activity: activity
+            }
+        })
+
+        let q = queue(function(task, callback) {
+            redisHelper.get(task.key).then(cachedData => {
                 if (cachedData) {
                     //@TODO: Check if cachedData length is enough. If not, get more
                     finalResults = finalResults.concat(cachedData.results)
-                    searches++
-                    if (searches === totalCategories) {
-                        finalResults = helpers.removeDuplicates(finalResults, 'id')
-                        finalResults = helpers.addProvider(finalResults, 'yelp')
-                        return resolve(finalResults)
-                    }
+                    callback()
                 } else {
-                    console.log("fetching yelp for live business data...")
-                    console.log("using this term: ", getYelpConfigDataByKey(activity, 'term'))
-                    console.log("and this category: ", getYelpConfigDataByKey(activity, 'categories'))
                     YelpClient.search({
-                        term: getYelpConfigDataByKey(activity, 'term'),
-                        categories: getYelpConfigDataByKey(activity, 'categories'),
+                        term: getYelpConfigDataByKey(task.activity, 'term'),
+                        categories: getYelpConfigDataByKey(task.activity, 'categories'),
                         latitude: lat,
                         longitude: long,
                         sortBy: 'rating',
-                        limit: required[activity].count,
+                        limit: required[task.activity].count,
                         radius: helpers.milesToRadius(data.radius)
                     }).then(response => {
-                        console.log("got this many live from yelp: ", response.jsonBody.businesses.length)
-                        if (response.jsonBody.businesses.length) {
-                            response.jsonBody.businesses.forEach(business => {
-                                business.category = required[activity].category
-                                business.subcategory = activity
-                            })
+                        response.jsonBody.businesses.forEach(business => {
+                            business.category = required[task.activity].category
+                            business.subcategory = task.activity
+                        })
 
-                            finalResults = finalResults.concat(response.jsonBody.businesses)
-
-                            // Cache the Yelp result
-                            redisHelper.set(key, {
-                                results: response.jsonBody.businesses
-                            })
-                        }
-
-                        searches++
-
-                        if (searches === totalCategories) {
-                            finalResults = helpers.removeDuplicates(finalResults, 'id')
-                            finalResults = helpers.addProvider(finalResults, 'yelp')
-                            return resolve(finalResults)
-                        }
+                        finalResults = finalResults.concat(response.jsonBody.businesses)
+                        // Cache the Yelp result
+                        redisHelper.set(task.key, {
+                            results: response.jsonBody.businesses
+                        })
+                        callback()
                     }).catch(e => {
                         console.log("error from yelp: ", e)
                     });
                 }
             })
-        })
+        }, 2)
+
+
+        requestObjects.forEach(obj => q.push(obj))
+
+        q.drain = function() {
+            finalResults = helpers.removeDuplicates(finalResults, 'id')
+            finalResults = helpers.addProvider(finalResults, 'yelp')
+            return resolve(finalResults)
+        }
     })
 
     function getYelpConfigDataByKey(activity, key) {
@@ -104,6 +101,7 @@ function searchForBusinesses(data, required) {
         }
     }
 }
+
 
 function getBusinessesInMoreDetail(businesses) {
     console.log("In yelp - getting " + businesses.length + " businesses in more detail")
@@ -127,20 +125,20 @@ function getBusinessesInMoreDetail(businesses) {
             }).catch(e => {
                 callback()
             })
-        }, 2);
+        }, 3);
 
         businesses.forEach(business => q.push(business))
 
         q.drain = function() {
             return resolve(detailedResults)
-        };
+        }
     })
 
     function getBusiness(id) {
-        return new Promise(async (resolve, reject) => {
+        return new Promise(async(resolve, reject) => {
             let fetchedBusiness = await fetch(id)
 
-            while(!fetchedBusiness){
+            while (!fetchedBusiness) {
                 fetchedBusiness = await fetch(id)
             }
 
