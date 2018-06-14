@@ -174,6 +174,7 @@ function getBusinessesInMoreDetail(businesses) {
     function formatBusinessResult(business) {
         return {
             name: business.name,
+            description: formatDescription(),
             id: business.id,
             phone: business.display_phone,
             address: business.location.display_address.join(', '),
@@ -187,6 +188,10 @@ function getBusinessesInMoreDetail(businesses) {
             rating: business.rating,
             category: business.category,
             subcategory: business.subcategory
+        }
+
+        function formatDescription() {
+            return "Here is my description..."
         }
 
         /**

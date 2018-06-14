@@ -15,6 +15,8 @@ module.exports = {
             data.radius = "1.5"
 
             let tripStub = TripStubHelper.createTripStub(data)
+//            return resolve(tripStub);
+            console.log("got the trip stub")
             let required = helpers.getRequiredBusinessesFromTripStub(tripStub)
 
             // Get a list of businesses that we can filter and sort
@@ -119,10 +121,13 @@ function sortByUserPreferenceAndRemoveBusinessesWithoutRequiredParameters(busine
  */
 async function getGameData(tmGameKey) {
     return new Promise(async(resolve, reject) => {
+        console.log("getting game data. Checking to see if it is in redis...")
         let cachedGameData = await redisHelper.get(tmGameKey)
         if (cachedGameData) {
+            console.log("Game was in Redis")
             return resolve(cachedGameData)
         } else {
+            console.log("have to fetch game from Ticketmaster")
             let data = await TicketMasterHelper.getGameDetails(_.last(tmGameKey.split('-')))
             let startTime = moment(data.dates.start.dateTime).subtract(1, 'hour').toISOString()
 

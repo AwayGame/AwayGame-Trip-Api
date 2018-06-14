@@ -197,6 +197,7 @@ async function getBusinessesInMoreDetail(businesses) {
     function formatBusinessResult(business) {
         return {
             name: business.name,
+            description: formatDescription(),
             placeId: business.place_id,
             phone: business.formatted_phone_number,
             address: business.formatted_address,
@@ -210,6 +211,10 @@ async function getBusinessesInMoreDetail(businesses) {
             category: business.category,
             subcategory: business.subcategory,
             mapsUrl: formatMapsUrl(business.geometry.location.lat, business.geometry.location.lng)
+        }
+
+        function formatDescription() {
+            return "Here is my description..."
         }
 
         /**
