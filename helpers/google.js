@@ -16,6 +16,7 @@ module.exports = {
         console.log("in Google. Getting more details for this many: ", businesses.length)
         return new Promise((resolve, reject) => {
             getBusinessesInMoreDetail(businesses).then(detailedBusinesses => {
+                console.log("got more details")
                 return resolve(detailedBusinesses)
             }).catch(err => {
                 console.log("error getting details in google: ", err)
@@ -29,12 +30,8 @@ function getBusinesses(queryObjects, required) {
         let results = []
         let totalRequests = 0
 
-        console.log(queryObjects)
-        
         queryObjects.forEach(queryObject => {
-            console.log("queryObject: ", queryObject)
             let amountToFetch = required[queryObject.subcategory].count
-            console.log("amountToFetch: ", amountToFetch)
 
             getBusinessesFromGoogle(queryObject, amountToFetch).then(response => {
                 response.forEach(result => {
@@ -168,7 +165,6 @@ async function getBusinessesInMoreDetail(businesses) {
         businesses.forEach(business => {
             let url = config.google.getBusinessInMoreDetailUrl
             url += 'placeid=' + business.place_id + '&key=' + config.google.placesApiKey
-
             axios.get(url).then(response => {
                 if (response.data.result) {
                     response.data.result.category = business.category
@@ -185,8 +181,10 @@ async function getBusinessesInMoreDetail(businesses) {
                     }
                 } else {
                     //handle error here...
-                    console.log("error: ", response)
+                    console.log("error getting googld full: ", response)
                 }
+            }).catch(err => {
+
             })
         })
     })

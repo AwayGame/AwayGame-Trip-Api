@@ -15,12 +15,13 @@ module.exports = {
             data.radius = "1.5"
 
             let tripStub = TripStubHelper.createTripStub(data)
-            return resolve(tripStub)
             let required = helpers.getRequiredBusinessesFromTripStub(tripStub)
 
             // Get a list of businesses that we can filter and sort
             // through before getting more details
             let businessData = await getListOfBusinessesFromProviders(data, required)
+            console.log("got business data")
+
             let initialListOfBusinesses = []
 
             for (var i = 0; i < businessData.length; i++) {
@@ -33,22 +34,16 @@ module.exports = {
             // Sort by user preferences
             initialListOfBusinesses = sortByUserPreferenceAndRemoveBusinessesWithoutRequiredParameters(initialListOfBusinesses, data.preferences)
 
-            let finalListOfBusinesses = {}
-            initialListOfBusinesses.forEach(b => {
-                if (!finalListOfBusinesses[b.subcategory]) finalListOfBusinesses[b.subcategory] = []
-                if (finalListOfBusinesses[b.subcategory].length < required[b.subcategory].count) {
-                    finalListOfBusinesses[b.subcategory].push(b)
-                }
-            })
 
-            let finalSetOfDataToFetch = []
-            Object.keys(finalListOfBusinesses).forEach(key => finalSetOfDataToFetch.push(...finalListOfBusinesses[key]))
+            let finalListOfBusinesses = getFinalListOfBusinessesFromTripStub(initialListOfBusinesses, required)
 
-            getMoreDetails(finalSetOfDataToFetch).then(finalBusinessData => {
+            getMoreDetails(finalListOfBusinesses).then(finalBusinessData => {
                 let finalBusinesses = []
                 for (var i = 0; i < finalBusinessData.length; i++) {
                     finalBusinesses.push(...finalBusinessData[i])
                 }
+
+                console.log("got the data with more details!!!")
 
                 formatTripFromBusinesses(tripStub, finalBusinesses).then(trip => {
                     return resolve(trip)
@@ -72,7 +67,7 @@ async function getListOfBusinessesFromProviders(data, required) {
     return new Promise(async(resolve, reject) => {
         let businesses = await Promise.all([
             GoogleHelper.findBusinesses(data, required),
-            YelpHelper.findBusinesses(data, required)
+            //YelpHelper.findBusinesses(data, required)
         ])
 
         return resolve(businesses)
@@ -92,7 +87,7 @@ function getMoreDetails(businesses) {
 
         Promise.all([
             GoogleHelper.getMoreDetails(data['google']),
-            YelpHelper.getMoreDetails(data['yelp'])
+            //YelpHelper.getMoreDetails(data['yelp'])
         ]).then(businesses => {
             return resolve(businesses)
         })
@@ -151,6 +146,8 @@ function formatTripFromBusinesses(tripStub, businesses) {
         console.log("Got the details for the businesses...")
         console.log("Creating trip...")
 
+        console.log("trip stub: ", tripStub)
+
         Object.keys(tripStub).forEach(day => getBusinessAndBackupOpenAtAvailableTime(day))
 
         console.log("done!")
@@ -159,7 +156,8 @@ function formatTripFromBusinesses(tripStub, businesses) {
         let tripResponse = {
             "itineraries": Object.keys(tripStub).map(tripStubKey => {
                 return {
-                    "activities": tripStub[tripStubKey]
+                    "activities": tripStub[tripStubKey],
+                    "date": tripStubKey
                 }
             })
         }
@@ -174,9 +172,13 @@ function formatTripFromBusinesses(tripStub, businesses) {
                     let business = businesses[j]
                     for (var k = 0; k < business.hours.individualDaysData.length; k++) {
                         let businessDay = business.hours.individualDaysData[k]
-                        if (_.findWhere(foundBusinesses, business) == null && business.subcategory === activity.name && businessDay.open.day === moment(day).day() && businessIsOpenOnTime(businessDay, day, activity)) {
+                        if (_.findWhere(foundBusinesses, business) == null &&
+                            business.subcategory === activity.name &&
+                            businessDay.open.day === moment(day).day() &&
+                            businessIsOpenOnTime(businessDay, day, activity)) {
                             foundBusinesses.push(business)
                             if (foundBusinesses.length >= 3) {
+                                console.log("adding data to this: ", activity)
                                 Object.keys(foundBusinesses[0]).forEach(key => {
                                     activity[key] = foundBusinesses[0][key]
                                 })
@@ -196,13 +198,38 @@ function formatTripFromBusinesses(tripStub, businesses) {
     })
 
     function businessIsOpenOnTime(businessDay, day, activity) {
+        if (!businessDay.open.time || !businessDay.close.time) return false
+
+        console.log("day: ", day)
         let activityTime = moment(day + ' ' + activity.startTime)
-        let businessOpenTime = moment(day + ' ' + helpers.convert24HourIntToString(parseInt(businessDay.open.time)))
-        let businessCloseTime = moment(day + ' ' + helpers.convert24HourIntToString(parseInt(businessDay.close.time)))
+
+        let businessOpenTime = moment(day + helpers.convert24HourIntToString(parseInt(businessDay.open.time)))
+        let businessCloseTime = moment(day + helpers.convert24HourIntToString(parseInt(businessDay.close.time)))
 
         if (businessOpenTime.isSameOrBefore(activityTime)) return true
         if (businessCloseTime.isSameOrAfter(activityTime)) return true
         if (businessDay.close.day != businessDay.open.day) return true
         return false
     }
+}
+
+function getFinalListOfBusinessesFromTripStub(businesses, required) {
+    let finalList = []
+
+    businesses.forEach(b => {
+        if (getNumberOfActivitiesThatMatchCategoryInArray(finalList, b.subcategory) < required[b.subcategory].count) {
+            finalList.push(b)
+        }
+    })
+
+    return finalList
+}
+
+function getNumberOfActivitiesThatMatchCategoryInArray(array, category) {
+    if (!array.length) return 0
+
+    let count = _.countBy(array, function(item) {
+        return item.subcategory === category;
+    });
+    return count.true || 0
 }

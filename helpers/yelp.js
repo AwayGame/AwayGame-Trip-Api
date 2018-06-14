@@ -52,6 +52,9 @@ function searchForBusinesses(data, required) {
                         return resolve(finalResults)
                     }
                 } else {
+                    console.log("fetching yelp for live business data...")
+                    console.log("using this term: ", getYelpConfigDataByKey(activity, 'term'))
+                    console.log("and this category: ", getYelpConfigDataByKey(activity, 'categories'))
                     YelpClient.search({
                         term: getYelpConfigDataByKey(activity, 'term'),
                         categories: getYelpConfigDataByKey(activity, 'categories'),
@@ -61,6 +64,7 @@ function searchForBusinesses(data, required) {
                         limit: required[activity].count,
                         radius: helpers.milesToRadius(data.radius)
                     }).then(response => {
+                        console.log("got this many live from yelp: ", response.jsonBody.businesses.length)
                         if (response.jsonBody.businesses.length) {
                             response.jsonBody.businesses.forEach(business => {
                                 business.category = required[activity].category
@@ -83,7 +87,7 @@ function searchForBusinesses(data, required) {
                             return resolve(finalResults)
                         }
                     }).catch(e => {
-                        console.log(e);
+                        console.log("error from yelp: ", e)
                     });
                 }
             })
@@ -118,12 +122,12 @@ function getBusinessesInMoreDetail(businesses) {
                         result.subcategory = task.subcategory
                         detailedResults.push(formatBusinessResult(result))
                         callback()
-                    }, 250)
+                    }, 150)
                 }
             }).catch(e => {
                 callback()
             })
-        }, 1);
+        }, 2);
 
         businesses.forEach(business => q.push(business))
 

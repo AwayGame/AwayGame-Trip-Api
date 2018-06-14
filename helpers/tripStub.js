@@ -57,14 +57,14 @@ module.exports = {
         if (finishedAddingActivities()) {
             return tripStub
         }
-        
+
         addNewActivitiesArrayIfNewDay()
         getFoodOption()
-        
+
         if (finishedAddingActivities()) {
             return tripStub
         }
-        
+
         addActivitiesFromNowUntilTimeframe('lunch', dayActivities)
 
         if (finishedAddingActivities()) {
@@ -72,25 +72,25 @@ module.exports = {
         }
 
         getFoodOption()
-        
+
         if (finishedAddingActivities()) {
             return tripStub
         }
-        
+
         addActivitiesFromNowUntilTimeframe('dinner', dayActivities)
-        
+
         if (finishedAddingActivities()) {
             return tripStub
         }
-        
+
         getFoodOption()
-        
+
         if (finishedAddingActivities()) {
             return tripStub
         }
-        
+
         addActivitiesFromNowUntilTimeframe('endOfDay', nightActivities)
-        
+
         if (finishedAddingActivities()) {
             return tripStub
         }
@@ -216,6 +216,11 @@ function addOptionToTrip(option) {
     let optionToAdd = Object.assign({}, option)
     tripStub[currentDay].push(optionToAdd)
     arrivalDate.add(config.activityDuration[optionToAdd.name], 'm')
+    
+    if(option.additionalTime) {
+        arrivalDate.add(option.additionalTime, 'm')
+        delete option.additionalTime
+    }
 }
 
 /**
@@ -365,18 +370,45 @@ function addActivitiesFromNowUntilTimeframe(timeframe, activities, accountForGam
 }
 
 function findAllCombinationsOfActivitiesForGivenTime(activities, target) {
+    let datasets = []
     let results = [];
-    let listOfTimes = activities.map(a => config.activityDuration[a.name])
-    let maxTimeUserCanSpend = _.reduce(listOfTimes, function(memo, num) {
-        return memo + num;
-    }, 0);
+    let dataToReturn = []
+    let originalTarget = target
 
 
-    if (target > maxTimeUserCanSpend) {
-        target = maxTimeUserCanSpend
+    getPossibleOptionCombinations(0, target, [], results);
+
+    datasets = getDatasetsWithNoRepeats(results)
+
+    while (!datasets.length) {
+        results = []
+        target -= 5
+        getPossibleOptionCombinations(0, target, [], results);
+        datasets = getDatasetsWithNoRepeats(results)
     }
 
-    function recurse(start, leftOver, selection) {
+    datasets = _.shuffle(datasets)
+
+    for (var i = 0; i < datasets.length; i++) {
+        dataToReturn.push(...datasets[i])
+    }
+
+
+    if (originalTarget != target) {
+        let remainder = Math.floor(originalTarget - target)
+        // Add remainder split between the activities
+        let remainderOptions = splitRemainingTimeIntoChunks(remainder, dataToReturn.length, 15)
+
+        remainderOptions.forEach((r, i) => {
+            dataToReturn[i].additionalTime = r
+        })
+
+        return dataToReturn
+    } else {
+        return dataToReturn
+    }
+
+    function getPossibleOptionCombinations(start, leftOver, selection, results) {
         if (leftOver < 0) {
             return; // failure
         }
@@ -387,24 +419,23 @@ function findAllCombinationsOfActivitiesForGivenTime(activities, target) {
         }
 
         for (var i = start; i < activities.length; i++) {
-            recurse(i, leftOver - config.activityDuration[activities[i].name], selection.concat(activities[i]));
+            getPossibleOptionCombinations(i, leftOver - config.activityDuration[activities[i].name], selection.concat(activities[i]), results);
         }
     }
+}
 
-    recurse(0, target, []);
-
-
-    let datasets = getDatasetsWithNoRepeats(results)
-
-    while (!datasets.length) {
-        results = []
-        target += 5
-        recurse(0, target, [])
-        datasets = getDatasetsWithNoRepeats(results)
+function splitRemainingTimeIntoChunks(n, k, a) {
+    var values = [];
+    while (n > 0 && k > 0) {
+        if (a % 2 == 0)
+            a = Math.floor(n / k / a) * a;
+        else
+            a = Math.ceil(n / k / a) * a;
+        n -= a;
+        k--;
+        values.push(a);
     }
-
-    datasets = _.shuffle(datasets)
-    return datasets[0]
+    return values
 }
 
 function getDatasetsWithNoRepeats(data) {
