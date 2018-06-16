@@ -50,6 +50,8 @@ module.exports = {
                 break;
             case 'NFL Football':
                 return config.activityDuration['NFL']
+            case 'MLB Baseball':
+                return config.activityDuration['MLB']
             default:
                 return 180;
         }

@@ -212,7 +212,8 @@ function shuffleOptions() {
  * @return  {Void}          This function does not return anything
  */
 function addOptionToTrip(option) {
-    option.startTime = arrivalDate.format('hh:mm:ss a')
+    option.date = arrivalDate.format('YYYY-MM-DD')
+    option.startTime = arrivalDate.format('hh:mm a')
     let optionToAdd = Object.assign({}, option)
     tripStub[currentDay].push(optionToAdd)
     arrivalDate.add(config.activityDuration[optionToAdd.name], 'm')
