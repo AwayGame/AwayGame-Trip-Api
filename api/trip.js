@@ -731,7 +731,7 @@ function formatTripFromBusinesses(tripStub, businesses) {
             "itineraries": Object.keys(tripStub).map(tripStubKey => {
                 return {
                     "activities": tripStub[tripStubKey],
-                    "date": moment(tripResponse + 'T12:00:00Z').format('dddd, MMM D')
+                    "date": moment(tripStubKey + 'T12:00:00Z').format('dddd, MMM D')
                 }
             })
         }
