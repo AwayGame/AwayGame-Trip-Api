@@ -575,12 +575,10 @@ const RETURNTEST = false
 module.exports = {
     createTrip: (data) => {
         return new Promise(async(resolve, reject) => {
-
             // For testing purposes
             if (RETURNTEST) {
                 return resolve(exampleTrip)
             }
-
 
             addCoffeeShopsPreferenceIfNotInFoodPreferences(data)
 
@@ -734,6 +732,7 @@ function formatTripFromBusinesses(tripStub, businesses) {
                 return {
                     "activities": tripStub[tripStubKey],
                     "date": tripStubKey
+                    "date": moment(tripResponse + 'T12:00:00Z').format('dddd, MMM D')
                 }
             })
         }
