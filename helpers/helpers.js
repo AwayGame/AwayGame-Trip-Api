@@ -67,7 +67,7 @@ module.exports = {
                         count: 0
                     }
 
-                    required[a.name].count += 4
+                    required[a.name].count += 2
                 }
             })
         })
@@ -82,5 +82,14 @@ module.exports = {
         }
         arr.splice(new_index, 0, arr.splice(old_index, 1)[0]);
         return arr;
+    },
+    getActivityWithShortestDuration: (activities) => {
+        let obj
+        activities.forEach(a => {
+            if(!obj || config.activityDuration[a.name] < config.activityDuration[obj.name]) {
+                obj = a
+            }
+        })
+        return [obj, config.activityDuration[obj.name]]
     }
 }

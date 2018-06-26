@@ -4,6 +4,16 @@ const queue = require('async/queue')
 const helpers = require('./helpers')
 const YelpClient = yelp.client(config.yelp.fusionApiKey);
 const async = require('async')
+const { GraphQLClient } = require('graphql-request')
+const { jsonToGraphQLQuery } = require('json-to-graphql-query');
+const graphQLParser = require('json-graphql');
+
+
+const YelpGraphQlClient = new GraphQLClient(config.yelp.yelpGraphQlApiUrl, {
+    headers: {
+        Authorization: "Bearer " + config.yelp.fusionApiKey,
+    },
+})
 
 module.exports = {
     findBusinesses: (data, required) => {
@@ -28,8 +38,8 @@ module.exports = {
  * 
  */
 
+
 function searchForBusinesses(data, required) {
-    console.log("here here!")
     return new Promise((resolve, reject) => {
         let searches = 0
         let totalCategories = Object.keys(required).length
@@ -108,6 +118,15 @@ function getBusinessesInMoreDetail(businesses) {
     return new Promise((resolve, reject) => {
         if (!businesses || !businesses.length) return resolve([])
 
+        // Graph QL
+        //let ids = businesses.map(b => b.id)
+        //let query = formatGraphQlQUery(ids)
+        // console.time("time to get data")
+        // YelpGraphQlClient.request(query).then(data => {
+        //     console.timeEnd("time to get data")
+        //     console.log(data)
+        // })
+
         let detailedResults = []
         let q = queue(function(task, callback) {
             console.log("getting a yelp business")
@@ -165,7 +184,7 @@ function getBusinessesInMoreDetail(businesses) {
     }
 
     /**
-     * Formats the detailed result from the Google Places API
+     * Formats the detailed result from Yelp
      * @param  {Object} The business returned
      * @return {Object} The formatted data from said business
      */
@@ -185,7 +204,8 @@ function getBusinessesInMoreDetail(businesses) {
             price: config.yelp.YELP_PRICE_TO_DOUBLE[business.price],
             rating: business.rating,
             category: business.category,
-            subcategory: business.subcategory
+            subcategory: business.subcategory,
+            provider: 'yelp'
         }
 
         function formatDescription() {
@@ -206,7 +226,7 @@ function getBusinessesInMoreDetail(businesses) {
 
         function formatMapsUrl(lat, lng) {
             let latLngStr = lat + "," + lng
-            return "https://maps.googleapis.com/maps/api/staticmap?center=" + latLngStr + "&markers=color:0x82CA75|" + latLngStr + "&zoom=15&size=300x150&scale=2&key=" + config.google.mapStaticApiKey
+            return "https://maps.googleapis.com/maps/api/staticmap?center=" + latLngStr + "&markers=color:0x01AF66|" + latLngStr + "&zoom=15&size=300x150&scale=2&key=" + config.google.mapStaticApiKey
         }
 
         /**
@@ -286,4 +306,22 @@ function getBusinessesInMoreDetail(businesses) {
             return hourStrs
         }
     }
+}
+
+
+function formatGraphQlQUery(ids) {
+    let query = {}
+
+    ids.forEach((id, index) => {
+        query['b' + index] = {
+            "$": {
+                "_": "business",
+                "id": id
+            },
+            name: true,
+            photos: true
+        }
+    })
+
+    return graphQLParser.stringify(query)
 }

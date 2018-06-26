@@ -15,7 +15,9 @@ module.exports = {
     getMoreDetails: async(businesses) => {
         console.log("in Google. Getting more details for this many: ", businesses.length)
         return new Promise((resolve, reject) => {
+            console.time("Time to get details for Google")
             getBusinessesInMoreDetail(businesses).then(detailedBusinesses => {
+                console.timeEnd("Time to get details for Google")
                 console.log("got more details")
                 return resolve(detailedBusinesses)
             }).catch(err => {
@@ -210,7 +212,8 @@ async function getBusinessesInMoreDetail(businesses) {
             rating: business.rating,
             category: business.category,
             subcategory: business.subcategory,
-            mapsUrl: formatMapsUrl(business.geometry.location.lat, business.geometry.location.lng)
+            mapsUrl: formatMapsUrl(business.geometry.location.lat, business.geometry.location.lng),
+            provider: 'google'
         }
 
         function formatDescription() {
@@ -231,7 +234,7 @@ async function getBusinessesInMoreDetail(businesses) {
 
         function formatMapsUrl(lat, lng) {
             let latLngStr = lat + "," + lng
-            return "https://maps.googleapis.com/maps/api/staticmap?center=" + latLngStr + "&markers=color:0x82CA75|" + latLngStr + "&zoom=15&size=300x150&scale=2&key=" + config.google.mapStaticApiKey
+            return "https://maps.googleapis.com/maps/api/staticmap?center=" + latLngStr + "&markers=color:0x01AF66|" + latLngStr + "&zoom=15&size=300x150&scale=2&key=" + config.google.mapStaticApiKey
         }
 
         /**
