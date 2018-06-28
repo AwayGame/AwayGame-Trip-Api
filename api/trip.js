@@ -4,9 +4,10 @@ const TripStubHelper = require('../helpers/tripStub')
 const GoogleHelper = require('../helpers/google')
 const YelpHelper = require('../helpers/yelp')
 const TicketMasterHelper = require('../helpers/ticketmaster')
-const moment = require('moment')
-const _ = require('underscore')
+const moment = require('moment-timezone')
+moment.tz.setDefault('America/New_York')
 
+const _ = require('underscore')
 
 let exampleTrip = {
     "itineraries": [{

@@ -8,7 +8,6 @@ const { GraphQLClient } = require('graphql-request')
 const { jsonToGraphQLQuery } = require('json-to-graphql-query');
 const graphQLParser = require('json-graphql');
 
-
 const YelpGraphQlClient = new GraphQLClient(config.yelp.yelpGraphQlApiUrl, {
     headers: {
         Authorization: "Bearer " + config.yelp.fusionApiKey,

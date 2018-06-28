@@ -1,0 +1,19 @@
+config:
+  target: "http://localhost:3345"
+  phases:
+    - duration: 10
+      arrivalRate: 200
+scenarios:
+  - flow:
+      - post:
+          url: "/api/trip"
+          json:
+            gameId: "vv17FZ4aGkBiScYD"
+            lat: 38.0487
+            long: -84.5023
+            preferences: 
+              dayActivities: ["museums", "famousSights", "activeTourism"]
+              nightActivities: ["partybars", "sportsbars", "danceHalls"]
+              food: ["fastFood", "coffeeShops", "upscale"]
+            arrivalTime: "2018-09-05T13:00:00.000Z"
+            departureTime: "2018-09-07T15:00:00.000Z"

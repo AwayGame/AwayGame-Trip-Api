@@ -17,9 +17,6 @@
 6. Day/Night => same thing with coffee kinda
 7. Radius testing :/
 8. Move shows to night
-
-Activity Object needs to have "date" (05/22)
-Change date to "Wednesday, Sep 5"
  */
 
 const helpers = require('./helpers')
@@ -151,7 +148,7 @@ function addGame() {
  * @return {Boolean}
  */
 function isGameDay() {
-    console.log("game: ", game.date)
+    console.log("game: ", game.date.format('h:mm a'))
     console.log("arrivalDate: ", arrivalDate)
     return game.date.isSame(arrivalDate, 'day')
 }
