@@ -107,9 +107,12 @@ function getBusinesses(queryObjects, required) {
 
 function getQueryData(data, required) {
     return Object.keys(required).map(activity => {
+        // If the key is famous sights, then use 8 miles for the radius
+        let radius = (activity === 'famousSights') ? helpers.milesToRadius('8.0') : helpers.milesToRadius(data.radius)
+        
         let baseObject = {
             location: [data.lat, data.long],
-            radius: helpers.milesToRadius(data.radius),
+            radius: radius,
             language: 'en'
         }
 

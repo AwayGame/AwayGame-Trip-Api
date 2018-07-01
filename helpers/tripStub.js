@@ -1,24 +1,3 @@
-/*
------------------------------------------------------------
-    Fixes for API
------------------------------------------------------------
-
-2. Add timeframes for food options
-    breakfast: [coffeeShops, localCuisine, fastFood, famousSpots]
-    lunch: [localCuisine, fastFood, famousSpots, tapas, streetFood, fastCasual]
-    dinner: [intimate, upscale, localCuisine, fastFood, famousSpots, tapas, barFood]
-
-4. Test Google Places API for specific key words:
-    Bad Guys:
-        - Special Events
-        - 
-
-5. Famous Sights - needs to be 8 miles
-6. Day/Night => same thing with coffee kinda
-7. Radius testing :/
-8. Move shows to night
- */
-
 const helpers = require('./helpers')
 const moment = require('moment')
 const _ = require('underscore')
@@ -74,6 +53,7 @@ function getActivitiesForTheDay() {
 
 function addActivities() {
     console.log("adding activities. Here is the time: ", arrivalDate.format('h:mm a'))
+    
     if (arrivalDate.isBefore(breakfastTime)) {
         arrivalDate.set('hour', 9)
     }
@@ -112,6 +92,7 @@ function getFullDay() {
 }
 
 function getLunchAndRestOfDay() {
+    console.log("getting lunch and rest of day")
     addActivitiesFromNowUntilTimeframe('lunch', dayActivities)
     getFoodOption()
     addActivitiesFromNowUntilTimeframe('dinner', dayActivities)
@@ -120,6 +101,7 @@ function getLunchAndRestOfDay() {
 }
 
 function getDinnerAndRestOfDay() {
+    console.log("getting dinner and rest of day")
     addActivitiesFromNowUntilTimeframe('dinner', dayActivities)
     getFoodOption()
     addActivitiesFromNowUntilTimeframe('endOfDay', nightActivities)
@@ -252,18 +234,15 @@ function goToNextDay() {
  * @return {Void}     This function does not return anything
  */
 function getFoodOption() {
-    if (diningOptions.length < 3) {
-        shuffleOptions()
-        return diningOptions[0]
-    }
-
-    while (!foodOptionIsValid(diningOptions[0])) {
+    let timeframe = getFoodTimeframeFromCurrentTime()
+    
+    while (!foodOptionIsValid(diningOptions[0], timeframe)) {
         shuffleOptions()
     }
-
 
     let foodOption = diningOptions[0]
-    foodOption.timeframe = getFoodTimeframeFromCurrentTime()
+    
+    foodOption.timeframe = timeframe
     addOptionToTrip(foodOption)
 }
 
@@ -271,18 +250,11 @@ function getFoodOption() {
  * Checks to see if the food option is valid. If it is, it returns a timeframe
  * to set on the option that we picked
  * @param  {Object} optionToCheck The food option to check
+ * @param  {String} timeframe     The timeframe that we are adding the food option to
  * @return {Boolean}
  */
-function foodOptionIsValid(optionToCheck) {
-    if (!foodCategoryInDay('dinner') && !foodNameInDay(optionToCheck)) {
-        return true
-    } else if (!foodCategoryInDay('lunch') && !foodNameInDay(optionToCheck)) {
-        return true
-    } else if (!foodCategoryInDay('breakfast') && !foodNameInDay(optionToCheck)) {
-        return true
-    }
-
-    return false
+function foodOptionIsValid(optionToCheck, timeframe) {
+    return (!foodCategoryInDay(timeframe) && !foodNameInDay(optionToCheck) && foodOptionIsInCorrectTimeframe(optionToCheck, timeframe))
 }
 
 /**
@@ -308,6 +280,18 @@ function foodNameInDay(foodOption) {
     return tripStub[currentDay].some(option => {
         return option.name === foodOption.name
     })
+}
+
+/**
+ * Checks to see if the food option is in the correct timeframe.
+ * For example, we don't want a user going to an upscale restaurant
+ * for breakfast
+ * @param  {Object} optionToCheck The food option to check
+ * @param  {String} timeframe     The timeframe that we are adding the food option to
+ * @return {Boolean}            
+ */
+function foodOptionIsInCorrectTimeframe(foodOption, timeframe) {
+    return _.contains(config.diningOptionTimingPreferences[foodOption.name], timeframe)
 }
 
 /**

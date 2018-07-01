@@ -59,10 +59,12 @@ function searchForBusinesses(data, required) {
         let q = queue(function(task, callback) {
             redisHelper.get(task.key).then(cachedData => {
                 if (cachedData) {
-                    //@TODO: Check if cachedData length is enough. If not, get more
                     finalResults = finalResults.concat(cachedData.results)
                     callback()
                 } else {
+                    // If the key is famous sights, then use 8 miles for the radius
+                    let radius = (task.activity === 'famousSights') ? helpers.milesToRadius('8.0') : helpers.milesToRadius(data.radius)
+
                     YelpClient.search({
                         term: getYelpConfigDataByKey(task.activity, 'term'),
                         categories: getYelpConfigDataByKey(task.activity, 'categories'),
@@ -113,6 +115,7 @@ function searchForBusinesses(data, required) {
 
 
 function getBusinessesInMoreDetail(businesses) {
+    let count = 0
     console.log("In yelp - getting " + businesses.length + " businesses in more detail")
     return new Promise((resolve, reject) => {
         if (!businesses || !businesses.length) return resolve([])
@@ -130,10 +133,14 @@ function getBusinessesInMoreDetail(businesses) {
         let q = queue(function(task, callback) {
             console.log("getting a yelp business")
             getBusiness(task.id).then(function(result) {
+                count++
+                
                 if (!result.hours) {
+                    console.log("business didn't have hours!")
                     callback()
                 } else {
                     setTimeout(function() {
+                        console.log("we've now gotten this many: ", count)
                         result.category = task.category
                         result.subcategory = task.subcategory
                         detailedResults.push(formatBusinessResult(result))

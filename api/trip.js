@@ -7,6 +7,9 @@ const TicketMasterHelper = require('../helpers/ticketmaster')
 const moment = require('moment-timezone')
 moment.tz.setDefault('America/New_York')
 
+const distance = require('google-distance');
+distance.apiKey = config.google.placesApiKey;
+
 const _ = require('underscore')
 
 let exampleTrip = {
@@ -740,17 +743,55 @@ function formatTripFromBusinesses(tripStub, businesses) {
         let keysToRemove = ["timeframe", "placeId", "reviews", "website", "phone", "phone", "address", "backups", "additionalTime", "hours"]
 
         tripResponse['itineraries'].forEach(day => {
-            day.activities.forEach(a => {
+            day.activities.forEach((a, index) => {
                 keysToRemove.forEach(key => delete a[key])
             })
         })
 
-        return resolve(tripResponse)
+        checkForUber(tripResponse).then(tripResponse => {
+            return resolve(tripResponse)
+        })
+
+        function checkForUber(tripResponse) {
+            return new Promise((resolve, reject) => {
+                let count = 0,
+                    sum = 0
+
+                tripResponse['itineraries'].forEach(day => {
+                    sum += day.activities.length
+                })
+
+                tripResponse['itineraries'].forEach(day => {
+                    day.activities.forEach((a, index) => {
+                        if (index) {
+                            let activityOne = day.activities[index - 1]
+
+                            needsUber(activityOne, a).then(needed => {
+                                activityOne.needsUber = needed
+                                incrementAndCheckIfFinished()
+                            })
+                        } else {
+                            day.activities[index].needsUber = false
+                            incrementAndCheckIfFinished()
+                        }
+                    })
+                })
+
+                function incrementAndCheckIfFinished() {
+                    count++
+                    if (count === sum) {
+                        return resolve(tripResponse)
+                    }
+                }
+            })
+        }
 
         function getBusinessAndBackupOpenAtAvailableTime(day) {
+            console.log("\nGetting businesses for this day: ", day)
             let foundBusinesses = []
             for (var i = 0; i < tripStub[day].length; i++) {
                 let activity = tripStub[day][i]
+
                 for (var j = 0; j < businesses.length; j++) {
                     let business = businesses[j]
                     for (var k = 0; k < business.hours.individualDaysData.length; k++) {
@@ -772,6 +813,7 @@ function formatTripFromBusinesses(tripStub, businesses) {
                         }
                     }
                 }
+                //console.log("\n\nGOT HERE HERE HERE")
             }
         }
     })
@@ -782,11 +824,9 @@ function formatTripFromBusinesses(tripStub, businesses) {
         let activityTime = moment(day + ' ' + activity.startTime)
         let businessOpenTime = moment(day + helpers.convert24HourIntToString(parseInt(businessDay.open.time)))
         let businessCloseTime = moment(day + helpers.convert24HourIntToString(parseInt(businessDay.close.time)))
+        let timeAfterActivitiy = activityTime.clone().add(config.activityDuration[activity.name], 'm')
 
-        if (businessOpenTime.isSameOrBefore(activityTime)) return true
-        if (businessCloseTime.isSameOrAfter(activityTime)) return true
-        if (businessDay.close.day != businessDay.open.day) return true
-        return false
+        return businessOpenTime.isSameOrBefore(activityTime) && businessCloseTime.isSameOrAfter(timeAfterActivitiy)
     }
 }
 
@@ -815,4 +855,20 @@ function addCoffeeShopsPreferenceIfNotInFoodPreferences(data) {
     if (!_.contains(data.preferences.food, 'coffeeShops')) {
         data.preferences.food.push('coffeeShops')
     }
+}
+
+function needsUber(activityOne, activityTwo) {
+    return new Promise((resolve, reject) => {
+        if (!activityOne.location || !activityTwo.location) return resolve(false)
+
+        distance.get({
+                origin: activityOne.location.lat + ',' + activityOne.location.long,
+                destination: activityTwo.location.lat + ',' + activityTwo.location.long,
+                units: 'imperial'
+            },
+            function(err, data) {
+                if (err) return resolve(true)
+                resolve(parseFloat(data.distance) > 1 && data.distance.split(' ')[1] === 'mi')
+            });
+    })
 }
