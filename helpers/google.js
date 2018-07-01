@@ -36,6 +36,8 @@ function getBusinesses(queryObjects, required) {
             let amountToFetch = required[queryObject.subcategory].count
 
             getBusinessesFromGoogle(queryObject, amountToFetch).then(response => {
+                console.log("got " + response.length + " result(s) for query ", queryObject.data.query)
+                console.log("We needed this many: ", amountToFetch)
                 response.forEach(result => {
                     result.id = result.place_id
                     results.push(result)
@@ -70,8 +72,6 @@ function getBusinesses(queryObjects, required) {
                 let cachedData = await redisHelper.get(key)
 
                 if (cachedData) {
-                    // @TODO: Check if cachedData.results.length < amountToFetch. If
-                    // it is, then fetch more data...
                     return resolve(cachedData.results)
                 } else {
                     GoogleMapsClient.places(googleRequestObject.data, function(err, response) {

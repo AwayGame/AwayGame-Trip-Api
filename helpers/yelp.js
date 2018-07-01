@@ -59,6 +59,8 @@ function searchForBusinesses(data, required) {
         let q = queue(function(task, callback) {
             redisHelper.get(task.key).then(cachedData => {
                 if (cachedData) {
+                    console.log("(from cache) We got " + cachedData.results.length + " result(s) from Yelp for category: ", task.activity)
+                    console.log("we needed " + required[task.activity].count)
                     finalResults = finalResults.concat(cachedData.results)
                     callback()
                 } else {
@@ -71,9 +73,11 @@ function searchForBusinesses(data, required) {
                         latitude: lat,
                         longitude: long,
                         sortBy: 'rating',
-                        limit: required[task.activity].count,
+                        limit: 30,
                         radius: helpers.milesToRadius(data.radius)
                     }).then(response => {
+                        console.log("We got " + response.jsonBody.businesses.length + " result(s) from Yelp for category: ", task.activity)
+                        console.log("we needed " + required[task.activity].count)
                         response.jsonBody.businesses.forEach(business => {
                             business.category = required[task.activity].category
                             business.subcategory = task.activity
@@ -136,6 +140,7 @@ function getBusinessesInMoreDetail(businesses) {
                 count++
                 
                 if (!result.hours) {
+                    console.log("HERE IS THE RESULT: ", results)
                     console.log("business didn't have hours!")
                     callback()
                 } else {

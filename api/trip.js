@@ -592,12 +592,8 @@ module.exports = {
             data.radius = "1.5"
 
             let tripStub = TripStubHelper.createTripStub(data)
-            //return resolve(tripStub)
-
             let required = helpers.getRequiredBusinessesFromTripStub(tripStub)
 
-            // Get a list of businesses t hat we can filter and sort
-            // through before getting more details
             let businessData = await getListOfBusinessesFromProviders(data, required)
             console.log("got business data")
 
@@ -607,10 +603,8 @@ module.exports = {
                 initialListOfBusinesses.push(...businessData[i])
             }
 
-            // Remove duplicates
             initialListOfBusinesses = helpers.removeDuplicates(initialListOfBusinesses, 'id')
             initialListOfBusinesses = helpers.removeDuplicates(initialListOfBusinesses, 'name')
-            // Sort by user preferences
             initialListOfBusinesses = sortByUserPreferenceAndRemoveBusinessesWithoutRequiredParameters(initialListOfBusinesses, data.preferences)
 
             let finalListOfBusinesses = getFinalListOfBusinessesFromTripStub(initialListOfBusinesses, required)
@@ -791,15 +785,14 @@ function formatTripFromBusinesses(tripStub, businesses) {
             let foundBusinesses = []
             for (var i = 0; i < tripStub[day].length; i++) {
                 let activity = tripStub[day][i]
+                let businessFound = false
 
                 for (var j = 0; j < businesses.length; j++) {
                     let business = businesses[j]
                     for (var k = 0; k < business.hours.individualDaysData.length; k++) {
                         let businessDay = business.hours.individualDaysData[k]
-                        if (_.findWhere(foundBusinesses, business) == null &&
-                            business.subcategory === activity.name &&
-                            businessDay.open.day === moment(day).day() &&
-                            businessIsOpenOnTime(businessDay, day, activity)) {
+                        if (businessHasNotBeenUsed(foundBusinesses, business) && business.subcategory === activity.name && businessDay.open.day === moment(day).day() && businessIsOpenOnTime(businessDay, day, activity)) {
+                            businessFound = true
                             foundBusinesses.push(business)
 
                             Object.keys(foundBusinesses[0]).forEach(key => {
@@ -813,12 +806,28 @@ function formatTripFromBusinesses(tripStub, businesses) {
                         }
                     }
                 }
-                //console.log("\n\nGOT HERE HERE HERE")
+
+                if (!businessFound) {
+                    console.log("\n\nAHHHHH")
+                    console.log("Here is what we failed on.")
+                    console.log("It was this activity: ", activity)
+                    console.log("We searched through " + businesses.length + " businesses")
+                    let amountMan = 0
+                    businesses.forEach(b => {
+                        if (b.subcategory === activity.name) amountMan++
+                    })
+                    console.log("there are still " + amountMan + " business(es) that match...")
+                }
             }
+        }
+
+        function businessHasNotBeenUsed(foundBusinesses, business) {
+            return _.findWhere(foundBusinesses, business) === null || _.findWhere(foundBusinesses, business) === undefined
         }
     })
 
     function businessIsOpenOnTime(businessDay, day, activity) {
+        if (!businessDay.open || !businessDay.close) return false
         if (!businessDay.open.time || !businessDay.close.time) return false
 
         let activityTime = moment(day + ' ' + activity.startTime)
@@ -859,6 +868,7 @@ function addCoffeeShopsPreferenceIfNotInFoodPreferences(data) {
 
 function needsUber(activityOne, activityTwo) {
     return new Promise((resolve, reject) => {
+        if (activityTwo.category === 'game') return resolve(true)
         if (!activityOne.location || !activityTwo.location) return resolve(false)
 
         distance.get({
