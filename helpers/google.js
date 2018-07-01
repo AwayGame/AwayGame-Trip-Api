@@ -181,6 +181,7 @@ function getQueryData(data, required) {
 async function getBusinessesInMoreDetail(businesses) {
     return new Promise((resolve, reject) => {
         let detailedResults = []
+        console.log("in google getting details for this many: ", businesses.length)
         businesses.forEach(business => {
             let url = config.google.getBusinessInMoreDetailUrl
             url += 'placeid=' + business.place_id + '&key=' + config.google.placesApiKey
@@ -203,7 +204,8 @@ async function getBusinessesInMoreDetail(businesses) {
                     console.log("error getting googld full: ", response)
                 }
             }).catch(err => {
-
+                console.log("error getting details for google: ", err)
+                console.log("failed on this url: ", url)
             })
         })
     })
@@ -234,7 +236,7 @@ async function getBusinessesInMoreDetail(businesses) {
         }
 
         function formatDescription() {
-            return "Here is my description..."
+            return "Descriptions coming soon!"
         }
 
         /**

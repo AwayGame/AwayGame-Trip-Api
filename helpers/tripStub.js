@@ -53,7 +53,7 @@ function getActivitiesForTheDay() {
 
 function addActivities() {
     console.log("adding activities. Here is the time: ", arrivalDate.format('h:mm a'))
-    
+
     if (arrivalDate.isBefore(breakfastTime)) {
         arrivalDate.set('hour', 9)
     }
@@ -81,12 +81,38 @@ function getFullDay() {
         getFoodOption()
         addActivitiesFromNowUntilTimeframe('endOfDay', nightActivities)
     } else {
-        console.log("\nit's the users last day. handle here...")
+
+        //@TODO: Remove this
         getFoodOption()
+        
+        if(isEndOfTrip()){
+            return
+        }
+
         addActivitiesFromNowUntilTimeframe('lunch', dayActivities)
+        
+        if(isEndOfTrip()){
+            return
+        }
+
         getFoodOption()
+
+        if(isEndOfTrip()){
+            return
+        }
+
         addActivitiesFromNowUntilTimeframe('dinner', dayActivities)
+
+        if(isEndOfTrip()){
+            return
+        }
+
         getFoodOption()
+
+        if(isEndOfTrip()){
+            return
+        }
+
         addActivitiesFromNowUntilTimeframe('endOfDay', nightActivities)
     }
 }
@@ -213,6 +239,10 @@ function isEndOfDay() {
     return parseInt(arrivalDate.format('HHmm')) >= config.timeframes.endOfDay
 }
 
+function isEndOfTrip() {
+    return arrivalDate.isSameOrAfter(departureDate)
+}
+
 /**
  * Moves on to the next day and sets the time to 9:00am
  * @return {Void} This function does not return anything
@@ -235,13 +265,13 @@ function goToNextDay() {
  */
 function getFoodOption() {
     let timeframe = getFoodTimeframeFromCurrentTime()
-    
+
     while (!foodOptionIsValid(diningOptions[0], timeframe)) {
         shuffleOptions()
     }
 
     let foodOption = diningOptions[0]
-    
+
     foodOption.timeframe = timeframe
     addOptionToTrip(foodOption)
 }
@@ -323,9 +353,9 @@ function getTimeLeftInMinutesFromTimeframeToNextFoodOption(timeframe) {
     }
 }
 
-function addActivitiesFromNowUntilTimeframe(timeframe, activities) {
+function addActivitiesFromNowUntilTimeframe(timeframe, activities, passedInTime = null) {
     let time, activitiesToReturn
-    time = getTimeLeftInMinutesFromTimeframeToNextFoodOption(timeframe)
+    time = passedInTime || getTimeLeftInMinutesFromTimeframeToNextFoodOption(timeframe)
     activitiesToReturn = getListOfActivitiesToAddToTrip(activities, time)
     activitiesToReturn.forEach(a => addOptionToTrip(a))
 }

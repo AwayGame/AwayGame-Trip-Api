@@ -773,15 +773,19 @@ module.exports = {
             initialListOfBusinesses = _.uniq(initialListOfBusinesses, 'name');
             initialListOfBusinesses = sortByUserPreferenceAndRemoveBusinessesWithoutRequiredParameters(initialListOfBusinesses, data.preferences)
 
-            let finalListOfBusinesses = getFinalListOfBusinessesFromTripStub(initialListOfBusinesses, required)
-            console.log("list of businesses that we will get...: ", finalListOfBusinesses.length)
-            //return
+            //let finalListOfBusinesses = getFinalListOfBusinessesFromTripStub(initialListOfBusinesses, required)
+            //@TODO: Remove later
+            let finalListOfBusinesses = initialListOfBusinesses
             let finalBusinessData = await getMoreDetails(finalListOfBusinesses)
+            
+            console.log("final list of businesses length: ", finalListOfBusinesses.length)
 
             let finalBusinesses = []
             for (var i = 0; i < finalBusinessData.length; i++) {
+                console.log("lemgth of finalBusinessData at index " + i + " is: ", finalBusinessData[i].length)
                 finalBusinesses.push(...finalBusinessData[i])
             }
+            console.log("fetched this many for final: ", finalBusinesses.length)
 
             formatTripFromBusinesses(tripStub, finalBusinesses, data).then(trip => {
                 return resolve(trip)
@@ -885,7 +889,7 @@ async function getGameData(tmGameKey) {
 
             let cacheGameResult = await redisHelper.set(tmGameKey, gameData)
 
-            gameData.startTime = moment(gameData.date).subtract(1, 'hour')
+            gameData.startTime = moment(gameData.date).subtract(1, 'hour').format('h:mm a')
             gameData.date = moment(gameData.date)
 
             resolve(gameData)
@@ -895,8 +899,9 @@ async function getGameData(tmGameKey) {
 
 function formatTripFromBusinesses(tripStub, businesses, data) {
     return new Promise((resolve, reject) => {
+        console.log("getting activities for the trip")
         Object.keys(tripStub).forEach(day => getBusinessAndBackupOpenAtAvailableTime(day))
-
+        console.log("finished and checking Uber")
         let tripResponse = {
             "itineraries": Object.keys(tripStub).map(tripStubKey => {
                 return {
@@ -960,8 +965,6 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
                 let activity = tripStub[day][i]
                 let businessFound = false
 
-                if(activity.category === 'game') return
-
                 for (var j = 0; j < businesses.length; j++) {
                     let business = businesses[j]
                     for (var k = 0; k < business.hours.individualDaysData.length; k++) {
@@ -983,15 +986,17 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
                     }
                 }
 
-                if (!businessFound) {
+                if (!businessFound && activity.category === 'game') {
                     console.log("\n\nAHHHHH")
-                    console.log("DATA: ", data)
                     console.log("Here is what we failed on.")
                     console.log("It was this activity: ", activity.name)
                     console.log("We searched through " + businesses.length + " businesses")
                     let amountMan = 0
                     businesses.forEach(b => {
-                        if (b.subcategory === activity.name) amountMan++
+                        if (b.subcategory === activity.name) {
+                            console.log("one of the opens at " + b)
+                            amountMan++
+                        }
                     })
                     console.log("there are still " + amountMan + " business(es) that match...")
                 }

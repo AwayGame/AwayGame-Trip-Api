@@ -152,7 +152,7 @@ function getBusinessesInMoreDetail(businesses) {
                         result.subcategory = task.subcategory
                         detailedResults.push(formatBusinessResult(result))
                         callback()
-                    }, 150)
+                    }, 75)
                 }
             }).catch(e => {
                 callback()
@@ -223,7 +223,7 @@ function getBusinessesInMoreDetail(businesses) {
         }
 
         function formatDescription() {
-            return "Here is my description..."
+            return "Descriptions coming soon!"
         }
 
         /**
