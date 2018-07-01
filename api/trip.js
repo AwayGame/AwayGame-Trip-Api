@@ -587,14 +587,15 @@ module.exports = {
             addCoffeeShopsPreferenceIfNotInFoodPreferences(data)
 
             data.gameData = await getGameData('tm-game-' + data.gameId)
-            data.lat = data.gameData.location.lat
-            data.long = data.gameData.location.long
+            data.lat = (!data.gameData.location) ? data.gameData['location.lat'] : data.gameData.location.lat
+            data.long = (!data.gameData.location) ? data.gameData['location.long'] : data.gameData.location.long
 
             data.radius = "1.5"
 
             let tripStub = TripStubHelper.createTripStub(data)
             let required = helpers.getRequiredBusinessesFromTripStub(tripStub)
 
+            console.log("GETTING DATA...")
             let businessData = await getListOfBusinessesFromProviders(data, required)
             console.log("got business data")
 
@@ -603,12 +604,14 @@ module.exports = {
             for (var i = 0; i < businessData.length; i++) {
                 initialListOfBusinesses.push(...businessData[i])
             }
-
-            initialListOfBusinesses = helpers.removeDuplicates(initialListOfBusinesses, 'id')
-            initialListOfBusinesses = helpers.removeDuplicates(initialListOfBusinesses, 'name')
+            
+            initialListOfBusinesses = _.uniq(initialListOfBusinesses, 'id');
+            initialListOfBusinesses = _.uniq(initialListOfBusinesses, 'name');
             initialListOfBusinesses = sortByUserPreferenceAndRemoveBusinessesWithoutRequiredParameters(initialListOfBusinesses, data.preferences)
 
             let finalListOfBusinesses = getFinalListOfBusinessesFromTripStub(initialListOfBusinesses, required)
+            console.log("list of businesses that we will get...: ", finalListOfBusinesses.length)
+            //return
             let finalBusinessData = await getMoreDetails(finalListOfBusinesses)
 
             let finalBusinesses = []
@@ -616,7 +619,7 @@ module.exports = {
                 finalBusinesses.push(...finalBusinessData[i])
             }
 
-            formatTripFromBusinesses(tripStub, finalBusinesses).then(trip => {
+            formatTripFromBusinesses(tripStub, finalBusinesses, data).then(trip => {
                 return resolve(trip)
             })
         })
@@ -691,16 +694,18 @@ async function getGameData(tmGameKey) {
     return new Promise(async(resolve, reject) => {
         let cachedGameData = await redisHelper.get(tmGameKey)
         if (cachedGameData) {
-            cachedGameData.timeUserShouldGetToStadium = moment(cachedGameData.date).subtract(1, 'hour')
+            cachedGameData.startTime = moment(cachedGameData.date).subtract(1, 'hour')
             cachedGameData.date = moment(cachedGameData.date)
             return resolve(cachedGameData)
         } else {
             data = await TicketMasterHelper.getGameDetails(_.last(tmGameKey.split('-')))
 
             let time = data.dates.start.dateTime
+            let latLngStr = data._embedded.venues[0].location.latitude + "," + data._embedded.venues[0].location.longitude
+            
             let gameData = {
                 'category': 'game',
-                "title": data.name,
+                "name": data.name,
                 "classification": data.classifications[0].subGenre.name + ' ' + data.classifications[0].genre.name,
                 "id": data.id,
                 "ticketUrl": data.url,
@@ -709,14 +714,14 @@ async function getGameData(tmGameKey) {
                 "location": {
                     "lat": parseFloat(data._embedded.venues[0].location.latitude),
                     "long": parseFloat(data._embedded.venues[0].location.longitude)
-                }
+                },
+                "photos": [data.images[0].url],
+                "mapsUrl": "https://maps.googleapis.com/maps/api/staticmap?center=" + latLngStr + "&markers=color:0x01AF66|" + latLngStr + "&zoom=15&size=300x150&scale=2&key=" + config.google.mapStaticApiKey
             }
-
-            console.log("date: ", gameData.date)
 
             let cacheGameResult = await redisHelper.set(tmGameKey, gameData)
 
-            gameData.timeUserShouldGetToStadium = moment(gameData.date).subtract(1, 'hour')
+            gameData.startTime = moment(gameData.date).subtract(1, 'hour')
             gameData.date = moment(gameData.date)
 
             resolve(gameData)
@@ -724,7 +729,7 @@ async function getGameData(tmGameKey) {
     })
 }
 
-function formatTripFromBusinesses(tripStub, businesses) {
+function formatTripFromBusinesses(tripStub, businesses, data) {
     return new Promise((resolve, reject) => {
         Object.keys(tripStub).forEach(day => getBusinessAndBackupOpenAtAvailableTime(day))
 
@@ -786,15 +791,19 @@ function formatTripFromBusinesses(tripStub, businesses) {
         function getBusinessAndBackupOpenAtAvailableTime(day) {
             console.log("\nGetting businesses for this day: ", day)
             let foundBusinesses = []
+            let totalAdded = 0
             for (var i = 0; i < tripStub[day].length; i++) {
                 let activity = tripStub[day][i]
                 let businessFound = false
+
+                if(activity.category === 'game') return
 
                 for (var j = 0; j < businesses.length; j++) {
                     let business = businesses[j]
                     for (var k = 0; k < business.hours.individualDaysData.length; k++) {
                         let businessDay = business.hours.individualDaysData[k]
                         if (businessHasNotBeenUsed(foundBusinesses, business) && business.subcategory === activity.name && businessDay.open.day === moment(day).day() && businessIsOpenOnTime(businessDay, day, activity)) {
+                            totalAdded++
                             businessFound = true
                             foundBusinesses.push(business)
 
@@ -812,8 +821,9 @@ function formatTripFromBusinesses(tripStub, businesses) {
 
                 if (!businessFound) {
                     console.log("\n\nAHHHHH")
+                    console.log("DATA: ", data)
                     console.log("Here is what we failed on.")
-                    console.log("It was this activity: ", activity)
+                    console.log("It was this activity: ", activity.name)
                     console.log("We searched through " + businesses.length + " businesses")
                     let amountMan = 0
                     businesses.forEach(b => {
@@ -843,10 +853,13 @@ function formatTripFromBusinesses(tripStub, businesses) {
 }
 
 function getFinalListOfBusinessesFromTripStub(businesses, required) {
+    
+    console.log("initial length of businesses before we get out of here: ", businesses.length)
+    
     let finalList = []
 
     businesses.forEach(b => {
-        if (getNumberOfActivitiesThatMatchCategoryInArray(finalList, b.subcategory) < required[b.subcategory].count) {
+        if (getNumberOfActivitiesThatMatchCategoryInArray(finalList, b.subcategory) < (required[b.subcategory].count * 3)) {
             finalList.push(b)
         }
     })

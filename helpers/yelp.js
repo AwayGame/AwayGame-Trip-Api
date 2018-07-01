@@ -64,9 +64,11 @@ function searchForBusinesses(data, required) {
                     finalResults = finalResults.concat(cachedData.results)
                     callback()
                 } else {
+                    if(task.preference.indexOf('game') > -1) {
+                        return callback()
+                    }
                     // If the key is famous sights, then use 8 miles for the radius
                     let radius = (task.activity === 'famousSights') ? helpers.milesToRadius('8.0') : helpers.milesToRadius(data.radius)
-
                     YelpClient.search({
                         term: getYelpConfigDataByKey(task.activity, 'term'),
                         categories: getYelpConfigDataByKey(task.activity, 'categories'),
@@ -100,6 +102,7 @@ function searchForBusinesses(data, required) {
         requestObjects.forEach(obj => q.push(obj))
 
         q.drain = function() {
+            console.log("queue has been drained")
             finalResults = helpers.removeDuplicates(finalResults, 'id')
             finalResults = helpers.addProvider(finalResults, 'yelp')
             return resolve(finalResults)
@@ -135,7 +138,6 @@ function getBusinessesInMoreDetail(businesses) {
 
         let detailedResults = []
         let q = queue(function(task, callback) {
-            console.log("getting a yelp business")
             getBusiness(task.id).then(function(result) {
                 count++
                 
@@ -160,6 +162,7 @@ function getBusinessesInMoreDetail(businesses) {
         businesses.forEach(business => q.push(business))
 
         q.drain = function() {
+            console.log("Exiting the Yelp queue....")
             return resolve(detailedResults)
         }
     })

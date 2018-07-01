@@ -33,16 +33,7 @@ function getBusinesses(queryObjects, required) {
         let totalRequests = 0
 
         queryObjects.forEach(queryObject => {
-            let amountToFetch = required[queryObject.subcategory].count
-
-            getBusinessesFromGoogle(queryObject, amountToFetch).then(response => {
-                console.log("got " + response.length + " result(s) for query ", queryObject.data.query)
-                console.log("We needed this many: ", amountToFetch)
-                response.forEach(result => {
-                    result.id = result.place_id
-                    results.push(result)
-                })
-
+            if (!queryObject) {
                 totalRequests++
                 if (totalRequests === queryObjects.length) {
                     results = helpers.removeDuplicates(results, 'name')
@@ -54,7 +45,30 @@ function getBusinesses(queryObjects, required) {
 
                     return resolve(results)
                 }
-            })
+            } else {
+                let amountToFetch = required[queryObject.subcategory].count
+
+                getBusinessesFromGoogle(queryObject, amountToFetch).then(response => {
+                    console.log("got " + response.length + " result(s) for query ", queryObject.data.query)
+                    console.log("We needed this many: ", amountToFetch)
+                    response.forEach(result => {
+                        result.id = result.place_id
+                        results.push(result)
+                    })
+
+                    totalRequests++
+                    if (totalRequests === queryObjects.length) {
+                        results = helpers.removeDuplicates(results, 'name')
+                        results = helpers.removeDuplicates(results, 'place_id')
+                        results = helpers.addProvider(results, 'google')
+
+                        // If there are no opening hours, remove
+                        results = helpers.removeIfNoValueByKey(results, 'opening_hours')
+
+                        return resolve(results)
+                    }
+                })
+            }
         })
     })
 
@@ -109,7 +123,7 @@ function getQueryData(data, required) {
     return Object.keys(required).map(activity => {
         // If the key is famous sights, then use 8 miles for the radius
         let radius = (activity === 'famousSights') ? helpers.milesToRadius('8.0') : helpers.milesToRadius(data.radius)
-        
+
         let baseObject = {
             location: [data.lat, data.long],
             radius: radius,
