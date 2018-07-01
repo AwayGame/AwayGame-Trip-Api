@@ -702,7 +702,7 @@ async function getGameData(tmGameKey) {
                 "title": data.name,
                 "classification": data.classifications[0].subGenre.name + ' ' + data.classifications[0].genre.name,
                 "id": data.id,
-                "ticketUrL": data.url,
+                "ticketUrl": data.url,
                 "isTBA": data.dates.start.timeTBA,
                 "date": time,
                 "lat": parseFloat(data._embedded.venues[0].location.latitude),
