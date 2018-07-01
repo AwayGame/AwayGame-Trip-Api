@@ -705,8 +705,10 @@ async function getGameData(tmGameKey) {
                 "ticketUrl": data.url,
                 "isTBA": data.dates.start.timeTBA,
                 "date": time,
-                "lat": parseFloat(data._embedded.venues[0].location.latitude),
-                "long": parseFloat(data._embedded.venues[0].location.longitude)
+                "location": {
+                    "lat": parseFloat(data._embedded.venues[0].location.latitude),
+                    "long": parseFloat(data._embedded.venues[0].location.longitude)
+                }
             }
 
             console.log("date: ", gameData.date)
