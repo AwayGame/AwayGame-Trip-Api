@@ -587,8 +587,9 @@ module.exports = {
             addCoffeeShopsPreferenceIfNotInFoodPreferences(data)
 
             data.gameData = await getGameData('tm-game-' + data.gameId)
-            data.lat = data.gameData.lat
-            data.long = data.gameData.long
+            data.lat = data.gameData.location.lat
+            data.long = data.gameData.location.long
+
             data.radius = "1.5"
 
             let tripStub = TripStubHelper.createTripStub(data)
