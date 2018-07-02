@@ -1048,12 +1048,12 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
                 //Last result. Just add the first one that matches.
 
                 if (totalCount >= 25) {
-                    console.log("\n\nWe hit the failsafe...")
+                    console.log("\n\n\n\n\n\n\n\nWe hit the failsafe...")
                     for (var j = 0; j < businesses.length; j++) {
                         let business = businesses[j]
                         for (var k = 0; k < business.hours.individualDaysData.length; k++) {
                             let businessDay = business.hours.individualDaysData[k]
-                            if (businessHasNotBeenUsed(foundBusinesses, business) && business.subcategory === activity.name) {
+                            if (businessHasNotBeenUsed(foundBusinesses, business) && business.category === activity.category) {
                                 totalAdded++
                                 businessFound = true
                                 foundBusinesses.push(business)
