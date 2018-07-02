@@ -347,7 +347,10 @@ function foodOptionIsValid(optionToCheck, timeframe) {
  * @param  {Object} foodOption The food option that we are wanting to add
  * @return {Boolean}
  */
+
 function foodCategoryInDay(foodOption) {
+    console.log("tripStub: ", tripStub)
+    console.log("current day: ", currentDay)
     return tripStub[currentDay].some(option => {
         return option.timeframe === foodOption
     })
@@ -542,16 +545,19 @@ function isLastDay() {
 }
 
 function getDays() {
-    let date = arrivalDate.clone()
-    let count = getDifferenceInDays(date, departureDate)
-
-    tripStub[date.format('YYYY-MM-DD')] = []
-    date.add(1, 'days');
+    let dateOne = arrivalDate.clone().set('hour', 0)
+    let dateTwo = departureDate.clone().set('hour', 0)
+    
+    console.log(dateOne)
+    console.log(dateTwo)
+    let count = getDifferenceInDays(dateOne, dateTwo)
+    count++
 
     for (var i = 0; i < count; i++) {
-        tripStub[date.format('YYYY-MM-DD')] = []
-        date.add(1, 'days');
+        tripStub[dateOne.format('YYYY-MM-DD')] = []
+        dateOne.add(1, 'days');
     }
+    console.log("done here it is: ", tripStub)
 }
 
 function getDifferenceInDays(a, b) {
