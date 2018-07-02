@@ -772,8 +772,8 @@ module.exports = {
             console.log("Number of businesses after we take stuff out: ", initialListOfBusinesses.length)
 
             //@TODO: Only pull what we need
-            //let finalListOfBusinesses = getFinalListOfBusinessesFromTripStub(initialListOfBusinesses, required)
-            let finalListOfBusinesses = initialListOfBusinesses
+            let finalListOfBusinesses = getFinalListOfBusinessesFromTripStub(initialListOfBusinesses, required)
+            //let finalListOfBusinesses = initialListOfBusinesses
             console.log("got the list of busines: ", finalListOfBusinesses.length)
             let finalBusinessData = await getMoreDetails(finalListOfBusinesses)
             console.log("final list of businesses length: ", finalListOfBusinesses.length)
