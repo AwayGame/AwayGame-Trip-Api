@@ -806,7 +806,7 @@ async function getListOfBusinessesFromProviders(data, required) {
     return new Promise(async(resolve, reject) => {
         let businesses = await Promise.all([
             GoogleHelper.findBusinesses(data, required),
-            //YelpHelper.findBusinesses(data, required)
+            YelpHelper.findBusinesses(data, required)
         ])
 
         return resolve(businesses)
@@ -826,7 +826,7 @@ async function getMoreDetails(businesses) {
 
         Promise.all([
             GoogleHelper.getMoreDetails(data['google']),
-            //YelpHelper.getMoreDetails(data['yelp'])
+            YelpHelper.getMoreDetails(data['yelp'])
         ]).then(businesses => {
             return resolve(businesses)
         })
@@ -957,6 +957,7 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
         }
 
         function getBusinessAndBackupOpenAtAvailableTime(data, day) {
+            console.log("length test.....", businesses.length)
             console.log("\nGetting businesses for this day: ", day)
             let foundBusinesses = []
             let totalAdded = 0
