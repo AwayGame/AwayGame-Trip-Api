@@ -46,7 +46,10 @@ module.exports = {
                 return config.activityDuration['NCAAFB']
                 break;
             case 'NBA Basketball':
-                return config.activityDuration['NCAAFB']
+                return config.activityDuration['NBA']
+                break;
+            case 'College Basketball':
+                return config.activityDuration['NCAAMBB']
                 break;
             case 'NFL Football':
                 return config.activityDuration['NFL']

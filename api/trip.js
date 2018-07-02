@@ -765,13 +765,14 @@ module.exports = {
                 initialListOfBusinesses.push(...businessData[i])
             }
 
+            console.log("Number of businesses before we take stuff out: ", initialListOfBusinesses.length)
             initialListOfBusinesses = _.uniq(initialListOfBusinesses, 'id');
             initialListOfBusinesses = _.uniq(initialListOfBusinesses, 'name');
             initialListOfBusinesses = sortByUserPreferenceAndRemoveBusinessesWithoutRequiredParameters(initialListOfBusinesses, data.preferences)
+            console.log("Number of businesses after we take stuff out: ", initialListOfBusinesses.length)
 
             let finalListOfBusinesses = getFinalListOfBusinessesFromTripStub(initialListOfBusinesses, required)
-            //@TODO: Remove later
-            //let finalListOfBusinesses = initialListOfBusinesses
+            console.log("got the list of busines: ", finalListOfBusinesses.length)
             let finalBusinessData = await getMoreDetails(finalListOfBusinesses)
 
             console.log("final list of businesses length: ", finalListOfBusinesses.length)
@@ -1086,13 +1087,10 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
 }
 
 function getFinalListOfBusinessesFromTripStub(businesses, required) {
-
-    console.log("initial length of businesses before we get out of here: ", businesses.length)
-
     let finalList = []
 
     businesses.forEach(b => {
-        if (getNumberOfActivitiesThatMatchCategoryInArray(finalList, b.subcategory) < (required[b.subcategory].count * 2)) {
+        if (getNumberOfActivitiesThatMatchCategoryInArray(finalList, b.subcategory) < (required[b.subcategory].count * 3)) {
             finalList.push(b)
         }
     })
@@ -1106,6 +1104,7 @@ function getNumberOfActivitiesThatMatchCategoryInArray(array, category) {
     let count = _.countBy(array, function(item) {
         return item.subcategory === category;
     });
+    console.log("count.true for category " + category + "?: ", count.true)
     return count.true || 0
 }
 

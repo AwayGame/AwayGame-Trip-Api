@@ -382,7 +382,7 @@ function getFoodTimeframeFromCurrentTime() {
     let time = parseInt(arrivalDate.format('HHmm'))
     console.log("here is time: ", time)
 
-    if (time >= 1500) {
+    if (time >= 1600) {
         return 'dinner'
     } else if (time >= 1200) {
         return 'lunch'
