@@ -32,6 +32,7 @@ module.exports = {
 
 function getActivitiesForTheDay() {
     if (needToAddGame()) {
+        console.log("\nIT's GAME DAY\n")
         if (!game.isTBA) {
             let timeToStop = game.date.clone().subtract(1, 'hour')
 

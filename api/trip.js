@@ -993,33 +993,25 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
                 let totalCount = 0
                 while (!businessFound && activity.category != 'game' && totalCount < 25) {
                     totalCount++
-                    console.log("we didn't find one. Setting new category")
-                    console.log("Here it is before: ", activity.name)
 
-                    console.log("We searched through " + businesses.length + " businesses")
                     let amountMan = 0
                     businesses.forEach(b => {
                         if (b.subcategory === activity.name) {
                             amountMan++
                         }
                     })
-                    console.log("there are still " + amountMan + " business(es) that match...")
-                    console.log("\n")
 
                     switch (activity.category) {
                         case 'food':
                             var newName = data.preferences.food[_.random(0, data.preferences.food.length - 1)];
-                            console.log("setting cateogry to " + newName)
                             activity.name = newName
                             break;
                         case 'day':
                             var newName = data.preferences.dayActivities[_.random(0, data.preferences.dayActivities.length - 1)]
-                            console.log("setting cateogry to " + newName)
                             activity.name = newName
                             break;
                         case 'night':
                             var newName = data.preferences.nightActivities[_.random(0, data.preferences.nightActivities.length - 1)]
-                            console.log("setting cateogry to " + newName)
                             activity.name = newName
                             break;
                     }
@@ -1048,7 +1040,7 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
 
                 //Last result. Just add the first one that matches.
 
-                if (totalCount >= 25) {
+                if (totalCount >= 5) {
                     console.log("\n\n\n\n\n\n\n\nWe hit the failsafe...")
                     for (var j = 0; j < businesses.length; j++) {
                         let business = businesses[j]
@@ -1067,6 +1059,7 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
                                     return !foundBusinesses.includes(b)
                                 });
                                 foundBusinesses = []
+                                break
                             }
                         }
                     }
@@ -1075,7 +1068,7 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
         }
 
         function businessHasNotBeenUsed(foundBusinesses, business) {
-            return _.findWhere(foundBusinesses, business) === null || _.findWhere(foundBusinesses, business) === undefined
+            return _.findWhere(foundBusinesses, business) == null || _.findWhere(foundBusinesses, business) == undefined
         }
     })
 
