@@ -31,6 +31,10 @@ module.exports = {
 }
 
 function getActivitiesForTheDay() {
+    if (arrivalDate.isBefore(breakfastTime)) {
+        arrivalDate.set('hour', 9)
+    }
+
     if (needToAddGame()) {
         console.log("\nIT's GAME DAY\n")
         if (!game.isTBA) {
