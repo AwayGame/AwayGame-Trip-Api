@@ -34,13 +34,34 @@ function getActivitiesForTheDay() {
     if (needToAddGame()) {
         if (!game.isTBA) {
             console.log("game is not tba. Here is when the user should arrive: ", game.startTime)
-            
-            //@TODO: Use variable below to see when to add stuff
-            //let timeToStop = game.date.subtract(1, 'hour')
+            let timeToStop = game.date.clone().subtract(1, 'hour')
 
-            getFoodOption()
-            addActivitiesFromNowUntilTimeframe('lunch', dayActivities)
-            addGame()
+            if(timeToStop.isAfter(breakfastTime) && timeToStop.isSameOrBefore(lunchTime)){
+                console.log("game is in the morning....")
+                let diffInTimes = Math.abs(moment.duration(breakfastTime.diff(timeToStop)).asMinutes())
+                console.log("this many minutes after breakfast until user goes to game: ", diffInTimes)
+                getFoodOption()
+                addActivitiesFromNowUntilTimeframe('', dayActivities, diffInTimes)
+            } else if(timeToStop.isSameOrAfter(lunchTime) && timeToStop.isSameOrBefore(dinnerTime)){
+                console.log("game is between lunch and dinner")
+                getFoodOption()
+                addActivitiesFromNowUntilTimeframe('lunch', dayActivities)
+                getFoodOption()
+                let diffInTimes = Math.abs(moment.duration(dinnerTime.diff(timeToStop)).asMinutes())
+                console.log("this many minutes after lunch until user goes to game: ", diffInTimes)
+            } else if(timeToStop.isSameOrAfter(dinnerTime)){
+                console.log("game is after dinner")
+                getFoodOption()
+                addActivitiesFromNowUntilTimeframe('lunch', dayActivities)
+                getFoodOption()
+                addActivitiesFromNowUntilTimeframe('dinner', dayActivities)
+                let diffInTimes = Math.abs(moment.duration(dinnerTime.diff(timeToStop)).asMinutes())
+                console.log("this many minutes after lunch until user goes to game: ", diffInTimes)
+                if(diffInTimes < 15){
+                    addGame()
+                }
+            }
+
             addActivities()
         } else {
             // Add options up to lunch, then the game, then go to the next day
@@ -58,6 +79,10 @@ function getActivitiesForTheDay() {
 function addActivities() {
     console.log("adding activities. Here is the time: ", arrivalDate.format('h:mm a'))
 
+    if(arrivalDate.isSameOrAfter(endOfDay)){
+        return
+    }
+    
     if (arrivalDate.isBefore(breakfastTime)) {
         arrivalDate.set('hour', 9)
     }

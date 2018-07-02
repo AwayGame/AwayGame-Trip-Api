@@ -752,7 +752,6 @@ module.exports = {
             data.radius = "1.5"
 
             let tripStub = TripStubHelper.createTripStub(data)
-            //return resolve(tripStub)
             let required = helpers.getRequiredBusinessesFromTripStub(tripStub)
 
             console.log("GETTING DATA...")
@@ -982,10 +981,30 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
                     }
                 }
 
-                //@TODO: FIX THIS LATERRRRRR
-                while (!businessFound && activity.category != 'game') {
+
+
+
+                //@TODO: FIX THIS LATER
+                //The solution below is terrible. We need a better way of 
+                //choosing new categories if we run out of activities
+
+                let totalCount = 0
+                while (!businessFound && activity.category != 'game' && totalCount < 25) {
+                    totalCount++
                     console.log("we didn't find one. Setting new category")
-                    console.log("Here it is before: ", activity.category)
+                    console.log("Here it is before: ", activity.name)
+
+                    console.log("We searched through " + businesses.length + " businesses")
+                    let amountMan = 0
+                    businesses.forEach(b => {
+                        if (b.subcategory === activity.name) {
+                            console.log("one of the opens at " + b)
+                            amountMan++
+                        }
+                    })
+                    console.log("there are still " + amountMan + " business(es) that match...")
+                    console.log("\n")
+
                     switch (activity.category) {
                         case 'food':
                             var newName = data.preferences.food[_.random(0, data.preferences.food.length - 1)];
@@ -1024,9 +1043,32 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
                             }
                         }
                     }
+                }
 
-                    console.log("\n\nAHHHHH")
-                    console.log("here was the activity: ", activity)
+                //Last result. Just add the first one that matches.
+
+                if (totalCount >= 25) {
+                    console.log("We hit the failsafe...")
+                    for (var j = 0; j < businesses.length; j++) {
+                        let business = businesses[j]
+                        for (var k = 0; k < business.hours.individualDaysData.length; k++) {
+                            let businessDay = business.hours.individualDaysData[k]
+                            if (businessHasNotBeenUsed(foundBusinesses, business) && business.subcategory === activity.name) {
+                                totalAdded++
+                                businessFound = true
+                                foundBusinesses.push(business)
+
+                                Object.keys(foundBusinesses[0]).forEach(key => {
+                                    activity[key] = foundBusinesses[0][key]
+                                })
+
+                                businesses = _(businesses).filter(function(b) {
+                                    return !foundBusinesses.includes(b)
+                                });
+                                foundBusinesses = []
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1056,7 +1098,7 @@ function getFinalListOfBusinessesFromTripStub(businesses, required) {
     let finalList = []
 
     businesses.forEach(b => {
-        if (getNumberOfActivitiesThatMatchCategoryInArray(finalList, b.subcategory) < (required[b.subcategory].count * 2)) {
+        if (getNumberOfActivitiesThatMatchCategoryInArray(finalList, b.subcategory) < (required[b.subcategory].count)) {
             finalList.push(b)
         }
     })
