@@ -35,34 +35,46 @@ function getActivitiesForTheDay() {
         if (!game.isTBA) {
             let timeToStop = game.date.clone().subtract(1, 'hour')
 
-            if(timeToStop.isAfter(breakfastTime) && timeToStop.isSameOrBefore(lunchTime)){
+            if (timeToStop.isAfter(breakfastTime) && timeToStop.isSameOrBefore(lunchTime)) {
                 console.log("game is in the morning....")
-                let diffInTimes = Math.abs(moment.duration(breakfastTime.diff(timeToStop)).asMinutes())
-                diffInTimes = Math.ceil(diffInTimes/5)*5;
+                let diffInTimes = Math.abs(moment.duration(arrivalDate.diff(timeToStop)).asMinutes())
+                diffInTimes = Math.ceil(diffInTimes / 5) * 5;
                 console.log("this many minutes after breakfast until user goes to game: ", diffInTimes)
                 getFoodOption()
                 addActivitiesFromNowUntilTimeframe('', dayActivities, diffInTimes)
                 addGame()
-            } else if(timeToStop.isSameOrAfter(lunchTime) && timeToStop.isSameOrBefore(dinnerTime)){
+            } else if (timeToStop.isSameOrAfter(lunchTime) && timeToStop.isSameOrBefore(dinnerTime)) {
                 console.log("game is between lunch and dinner")
-                getFoodOption()
-                addActivitiesFromNowUntilTimeframe('lunch', dayActivities)
-                getFoodOption()
-                let diffInTimes = Math.abs(moment.duration(dinnerTime.diff(timeToStop)).asMinutes())
-                diffInTimes = Math.ceil(diffInTimes/5)*5;
-                console.log("this many minutes after lunch until user goes to game: ", diffInTimes)
-                addActivitiesFromNowUntilTimeframe('', dayActivities, diffInTimes)
-                addGame()
-            } else if(timeToStop.isSameOrAfter(dinnerTime)){
+                console.log("current time is: ", arrivalDate.format('h:mm a'))
+
+                if (parseInt(arrivalDate.format('HHmm')) >= 1000) {
+                    let diffInTimes = Math.abs(moment.duration(arrivalDate.diff(timeToStop)).asMinutes())
+                    diffInTimes = Math.ceil(diffInTimes / 5) * 5;
+                    console.log("this many minutes after lunch until user goes to game: ", diffInTimes)
+                    addActivitiesFromNowUntilTimeframe('', dayActivities, diffInTimes)
+                    addGame()
+                } else {
+                    getFoodOption()
+                    addActivitiesFromNowUntilTimeframe('lunch', dayActivities)
+                    console.log("got activities")
+                    getFoodOption()
+                    let diffInTimes = Math.abs(moment.duration(arrivalDate.diff(timeToStop)).asMinutes())
+                    diffInTimes = Math.ceil(diffInTimes / 5) * 5;
+                    console.log("this many minutes after lunch until user goes to game: ", diffInTimes)
+                    addActivitiesFromNowUntilTimeframe('', dayActivities, diffInTimes)
+                    addGame()
+                }
+
+            } else if (timeToStop.isSameOrAfter(dinnerTime)) {
                 console.log("game is after dinner")
                 getFoodOption()
                 addActivitiesFromNowUntilTimeframe('lunch', dayActivities)
                 getFoodOption()
                 addActivitiesFromNowUntilTimeframe('dinner', dayActivities)
-                let diffInTimes = Math.abs(moment.duration(dinnerTime.diff(timeToStop)).asMinutes())
-                diffInTimes = Math.ceil(diffInTimes/5)*5;
+                let diffInTimes = Math.abs(moment.duration(arrivalDate.diff(timeToStop)).asMinutes())
+                diffInTimes = Math.ceil(diffInTimes / 5) * 5;
                 console.log("this many minutes after lunch until user goes to game: ", diffInTimes)
-                if(diffInTimes < 15){
+                if (diffInTimes < 15) {
                     addGame()
                 } else {
                     addActivitiesFromNowUntilTimeframe('', nightActivities, diffInTimes)
@@ -87,10 +99,10 @@ function getActivitiesForTheDay() {
 function addActivities() {
     console.log("adding activities. Here is the time: ", arrivalDate.format('h:mm a'))
 
-    if(arrivalDate.isSameOrAfter(endOfDay)){
+    if (arrivalDate.isSameOrAfter(endOfDay)) {
         return
     }
-    
+
     if (arrivalDate.isBefore(breakfastTime)) {
         arrivalDate.set('hour', 9)
     }
@@ -121,32 +133,32 @@ function getFullDay() {
 
         //@TODO: Remove this
         getFoodOption()
-        
-        if(isEndOfTrip()){
+
+        if (isEndOfTrip()) {
             return
         }
 
         addActivitiesFromNowUntilTimeframe('lunch', dayActivities)
-        
-        if(isEndOfTrip()){
+
+        if (isEndOfTrip()) {
             return
         }
 
         getFoodOption()
 
-        if(isEndOfTrip()){
+        if (isEndOfTrip()) {
             return
         }
 
         addActivitiesFromNowUntilTimeframe('dinner', dayActivities)
 
-        if(isEndOfTrip()){
+        if (isEndOfTrip()) {
             return
         }
 
         getFoodOption()
 
-        if(isEndOfTrip()){
+        if (isEndOfTrip()) {
             return
         }
 
@@ -295,16 +307,18 @@ function goToNextDay() {
     endOfDay = moment(currentDay + helpers.convert24HourIntToString(config.timeframes.endOfDay))
 }
 
-
 /**
  * Gets a food option for the user's trip stub
  * @return {Void}     This function does not return anything
  */
 function getFoodOption() {
     let timeframe = getFoodTimeframeFromCurrentTime()
+    console.log("timeframe: ", timeframe)
 
     while (!foodOptionIsValid(diningOptions[0], timeframe)) {
         shuffleOptions()
+        //console.log("checking ", diningOptions[0])
+        //console.log("against " + timeframe)
     }
 
     let foodOption = diningOptions[0]
@@ -367,6 +381,7 @@ function foodOptionIsInCorrectTimeframe(foodOption, timeframe) {
  */
 function getFoodTimeframeFromCurrentTime() {
     let time = parseInt(arrivalDate.format('HHmm'))
+    console.log("here is time: ", time)
     if (Math.abs(moment.duration(dinnerTime.diff(arrivalDate)).asMinutes()) <= 60) {
         return 'dinner'
     } else if (Math.abs(moment.duration(lunchTime.diff(arrivalDate)).asMinutes()) <= 60) {

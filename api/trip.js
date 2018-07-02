@@ -784,6 +784,7 @@ module.exports = {
             console.log("fetched this many for final: ", finalBusinesses.length)
 
             formatTripFromBusinesses(tripStub, finalBusinesses, data).then(trip => {
+                console.log("\n\nfinished creating trip. Here it is:", trip)
                 return resolve(trip)
             })
         })
