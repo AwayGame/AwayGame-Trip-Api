@@ -998,7 +998,6 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
                     let amountMan = 0
                     businesses.forEach(b => {
                         if (b.subcategory === activity.name) {
-                            console.log("one of the opens at " + b)
                             amountMan++
                         }
                     })
@@ -1048,7 +1047,7 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
                 //Last result. Just add the first one that matches.
 
                 if (totalCount >= 25) {
-                    console.log("We hit the failsafe...")
+                    console.log("\n\nWe hit the failsafe...")
                     for (var j = 0; j < businesses.length; j++) {
                         let business = businesses[j]
                         for (var k = 0; k < business.hours.individualDaysData.length; k++) {
