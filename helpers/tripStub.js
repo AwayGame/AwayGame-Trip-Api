@@ -33,22 +33,26 @@ module.exports = {
 function getActivitiesForTheDay() {
     if (needToAddGame()) {
         if (!game.isTBA) {
-            console.log("game is not tba. Here is when the user should arrive: ", game.startTime)
             let timeToStop = game.date.clone().subtract(1, 'hour')
 
             if(timeToStop.isAfter(breakfastTime) && timeToStop.isSameOrBefore(lunchTime)){
                 console.log("game is in the morning....")
                 let diffInTimes = Math.abs(moment.duration(breakfastTime.diff(timeToStop)).asMinutes())
+                diffInTimes = Math.ceil(diffInTimes/5)*5;
                 console.log("this many minutes after breakfast until user goes to game: ", diffInTimes)
                 getFoodOption()
                 addActivitiesFromNowUntilTimeframe('', dayActivities, diffInTimes)
+                addGame()
             } else if(timeToStop.isSameOrAfter(lunchTime) && timeToStop.isSameOrBefore(dinnerTime)){
                 console.log("game is between lunch and dinner")
                 getFoodOption()
                 addActivitiesFromNowUntilTimeframe('lunch', dayActivities)
                 getFoodOption()
                 let diffInTimes = Math.abs(moment.duration(dinnerTime.diff(timeToStop)).asMinutes())
+                diffInTimes = Math.ceil(diffInTimes/5)*5;
                 console.log("this many minutes after lunch until user goes to game: ", diffInTimes)
+                addActivitiesFromNowUntilTimeframe('', dayActivities, diffInTimes)
+                addGame()
             } else if(timeToStop.isSameOrAfter(dinnerTime)){
                 console.log("game is after dinner")
                 getFoodOption()
@@ -56,8 +60,12 @@ function getActivitiesForTheDay() {
                 getFoodOption()
                 addActivitiesFromNowUntilTimeframe('dinner', dayActivities)
                 let diffInTimes = Math.abs(moment.duration(dinnerTime.diff(timeToStop)).asMinutes())
+                diffInTimes = Math.ceil(diffInTimes/5)*5;
                 console.log("this many minutes after lunch until user goes to game: ", diffInTimes)
                 if(diffInTimes < 15){
+                    addGame()
+                } else {
+                    addActivitiesFromNowUntilTimeframe('', nightActivities, diffInTimes)
                     addGame()
                 }
             }

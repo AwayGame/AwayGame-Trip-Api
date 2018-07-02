@@ -752,6 +752,7 @@ module.exports = {
             data.radius = "1.5"
 
             let tripStub = TripStubHelper.createTripStub(data)
+            //return resolve(tripStub)
             let required = helpers.getRequiredBusinessesFromTripStub(tripStub)
 
             console.log("GETTING DATA...")
@@ -1097,7 +1098,7 @@ function getFinalListOfBusinessesFromTripStub(businesses, required) {
     let finalList = []
 
     businesses.forEach(b => {
-        if (getNumberOfActivitiesThatMatchCategoryInArray(finalList, b.subcategory) < (required[b.subcategory].count)) {
+        if (getNumberOfActivitiesThatMatchCategoryInArray(finalList, b.subcategory) < (required[b.subcategory].count * 2)) {
             finalList.push(b)
         }
     })
