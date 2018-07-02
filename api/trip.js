@@ -771,7 +771,9 @@ module.exports = {
             initialListOfBusinesses = sortByUserPreferenceAndRemoveBusinessesWithoutRequiredParameters(initialListOfBusinesses, data.preferences)
             console.log("Number of businesses after we take stuff out: ", initialListOfBusinesses.length)
 
-            let finalListOfBusinesses = getFinalListOfBusinessesFromTripStub(initialListOfBusinesses, required)
+            //@TODO: Only pull what we need
+            //let finalListOfBusinesses = getFinalListOfBusinessesFromTripStub(initialListOfBusinesses, required)
+            let finalListOfBusinesses = initialListOfBusinesses
             console.log("got the list of busines: ", finalListOfBusinesses.length)
             let finalBusinessData = await getMoreDetails(finalListOfBusinesses)
             console.log("final list of businesses length: ", finalListOfBusinesses.length)
@@ -804,7 +806,7 @@ async function getListOfBusinessesFromProviders(data, required) {
     return new Promise(async(resolve, reject) => {
         let businesses = await Promise.all([
             GoogleHelper.findBusinesses(data, required),
-            YelpHelper.findBusinesses(data, required)
+            //YelpHelper.findBusinesses(data, required)
         ])
 
         return resolve(businesses)
@@ -824,7 +826,7 @@ async function getMoreDetails(businesses) {
 
         Promise.all([
             GoogleHelper.getMoreDetails(data['google']),
-            YelpHelper.getMoreDetails(data['yelp'])
+            //YelpHelper.getMoreDetails(data['yelp'])
         ]).then(businesses => {
             return resolve(businesses)
         })
@@ -984,8 +986,6 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
                 }
 
 
-
-
                 //@TODO: FIX THIS LATER
                 //The solution below is terrible. We need a better way of 
                 //choosing new categories if we run out of activities
@@ -1041,7 +1041,7 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
                 //Last result. Just add the first one that matches.
 
                 if (totalCount >= 5) {
-                    console.log("\n\n\n\n\n\n\n\nWe hit the failsafe...")
+                    console.log("\n\n\n\n\n\n\n\nWe hit the failsafe...with this activity: ", activity)
                     for (var j = 0; j < businesses.length; j++) {
                         let business = businesses[j]
                         for (var k = 0; k < business.hours.individualDaysData.length; k++) {
@@ -1073,15 +1073,25 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
     })
 
     function businessIsOpenOnTime(businessDay, day, activity) {
+        //console.log("\ndoes it have an open?: ", businessDay.open)
+        //console.log("does it have an close?: ", businessDay.close)
         if (!businessDay.open || !businessDay.close) return false
         if (!businessDay.open.time || !businessDay.close.time) return false
+
 
         let activityTime = moment(day + ' ' + activity.startTime)
         let businessOpenTime = moment(day + helpers.convert24HourIntToString(parseInt(businessDay.open.time)))
         let businessCloseTime = moment(day + helpers.convert24HourIntToString(parseInt(businessDay.close.time)))
         let timeAfterActivitiy = activityTime.clone().add(config.activityDuration[activity.name], 'm')
 
-        return businessOpenTime.isSameOrBefore(activityTime) && businessCloseTime.isSameOrAfter(timeAfterActivitiy)
+        //console.log("comparing businessDay.open.time " + businessDay.open.time + " with formatted: ", businessOpenTime.format('h:mm a'))
+        //console.log("comparing businessDay.close.time " + businessDay.close.time + " with formatted: ", businessCloseTime.format('h:mm a'))
+        //console.log("is " + businessOpenTime.format('h:mm a') + " the same or before " + activityTime.format('h:mm a') + "?: ", businessOpenTime.isSameOrBefore(activityTime))
+        //console.log("is " + businessCloseTime.format('h:mm a') + " the same or after " + timeAfterActivitiy.format('h:mm a') + "?: ", businessCloseTime.isSameOrAfter(timeAfterActivitiy))
+        //console.log("\n")
+        //@TODO: Make sure that you can stay after close
+        //return businessOpenTime.isSameOrBefore(activityTime) && businessCloseTime.isSameOrAfter(timeAfterActivitiy)
+        return businessOpenTime.isSameOrBefore(activityTime)
     }
 }
 
