@@ -33,6 +33,11 @@ module.exports = {
 function getActivitiesForTheDay() {
     if (needToAddGame()) {
         if (!game.isTBA) {
+            console.log("game is not tba. Here is when the user should arrive: ", game.startTime)
+            
+            //@TODO: Use variable below to see when to add stuff
+            //let timeToStop = game.date.subtract(1, 'hour')
+
             getFoodOption()
             addActivitiesFromNowUntilTimeframe('lunch', dayActivities)
             addGame()
@@ -42,7 +47,6 @@ function getActivitiesForTheDay() {
             getFoodOption()
             addActivitiesFromNowUntilTimeframe('lunch', dayActivities)
             addGame()
-            addActivities()
         }
     } else {
         addActivities()

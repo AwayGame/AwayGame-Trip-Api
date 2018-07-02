@@ -13,10 +13,8 @@ distance.apiKey = config.google.placesApiKey;
 const _ = require('underscore')
 
 let exampleTrip = {
-    "itineraries": [
-        {
-            "activities": [
-                {
+    "itineraries": [{
+            "activities": [{
                     "name": "City Museum",
                     "category": "day",
                     "date": "2018-06-28",
@@ -206,8 +204,7 @@ let exampleTrip = {
             "date": "Thursday, Jun 28"
         },
         {
-            "activities": [
-                {
+            "activities": [{
                     "name": "Cielo Restaurant & Bar",
                     "category": "food",
                     "date": "2018-06-29",
@@ -307,8 +304,7 @@ let exampleTrip = {
             "date": "Friday, Jun 29"
         },
         {
-            "activities": [
-                {
+            "activities": [{
                     "name": "SqWires Restaurant & Annex",
                     "category": "food",
                     "date": "2018-06-30",
@@ -499,8 +495,7 @@ let exampleTrip = {
             "date": "Saturday, Jun 30"
         },
         {
-            "activities": [
-                {
+            "activities": [{
                     "name": "Au Bon Pain",
                     "category": "food",
                     "date": "2018-07-01",
@@ -757,6 +752,7 @@ module.exports = {
             data.radius = "1.5"
 
             let tripStub = TripStubHelper.createTripStub(data)
+            //return resolve(tripStub)
             let required = helpers.getRequiredBusinessesFromTripStub(tripStub)
 
             console.log("GETTING DATA...")
@@ -768,16 +764,16 @@ module.exports = {
             for (var i = 0; i < businessData.length; i++) {
                 initialListOfBusinesses.push(...businessData[i])
             }
-            
+
             initialListOfBusinesses = _.uniq(initialListOfBusinesses, 'id');
             initialListOfBusinesses = _.uniq(initialListOfBusinesses, 'name');
             initialListOfBusinesses = sortByUserPreferenceAndRemoveBusinessesWithoutRequiredParameters(initialListOfBusinesses, data.preferences)
 
-            //let finalListOfBusinesses = getFinalListOfBusinessesFromTripStub(initialListOfBusinesses, required)
+            let finalListOfBusinesses = getFinalListOfBusinessesFromTripStub(initialListOfBusinesses, required)
             //@TODO: Remove later
-            let finalListOfBusinesses = initialListOfBusinesses
+            //let finalListOfBusinesses = initialListOfBusinesses
             let finalBusinessData = await getMoreDetails(finalListOfBusinesses)
-            
+
             console.log("final list of businesses length: ", finalListOfBusinesses.length)
 
             let finalBusinesses = []
@@ -870,7 +866,7 @@ async function getGameData(tmGameKey) {
 
             let time = data.dates.start.dateTime
             let latLngStr = data._embedded.venues[0].location.latitude + "," + data._embedded.venues[0].location.longitude
-            
+
             let gameData = {
                 'category': 'game',
                 "name": data.name,
@@ -900,7 +896,7 @@ async function getGameData(tmGameKey) {
 function formatTripFromBusinesses(tripStub, businesses, data) {
     return new Promise((resolve, reject) => {
         console.log("getting activities for the trip")
-        Object.keys(tripStub).forEach(day => getBusinessAndBackupOpenAtAvailableTime(day))
+        Object.keys(tripStub).forEach(day => getBusinessAndBackupOpenAtAvailableTime(data, day))
         console.log("finished and checking Uber")
         let tripResponse = {
             "itineraries": Object.keys(tripStub).map(tripStubKey => {
@@ -957,7 +953,7 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
             })
         }
 
-        function getBusinessAndBackupOpenAtAvailableTime(day) {
+        function getBusinessAndBackupOpenAtAvailableTime(data, day) {
             console.log("\nGetting businesses for this day: ", day)
             let foundBusinesses = []
             let totalAdded = 0
@@ -986,19 +982,51 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
                     }
                 }
 
-                if (!businessFound && activity.category === 'game') {
-                    console.log("\n\nAHHHHH")
-                    console.log("Here is what we failed on.")
-                    console.log("It was this activity: ", activity.name)
-                    console.log("We searched through " + businesses.length + " businesses")
-                    let amountMan = 0
-                    businesses.forEach(b => {
-                        if (b.subcategory === activity.name) {
-                            console.log("one of the opens at " + b)
-                            amountMan++
+                //@TODO: FIX THIS LATERRRRRR
+                while (!businessFound && activity.category != 'game') {
+                    console.log("we didn't find one. Setting new category")
+                    console.log("Here it is before: ", activity.category)
+                    switch (activity.category) {
+                        case 'food':
+                            var newName = data.preferences.food[_.random(0, data.preferences.food.length - 1)];
+                            console.log("setting cateogry to " + newName)
+                            activity.name = newName
+                            break;
+                        case 'day':
+                            var newName = data.preferences.dayActivities[_.random(0, data.preferences.dayActivities.length - 1)]
+                            console.log("setting cateogry to " + newName)
+                            activity.name = newName
+                            break;
+                        case 'night':
+                            var newName = data.preferences.nightActivities[_.random(0, data.preferences.nightActivities.length - 1)]
+                            console.log("setting cateogry to " + newName)
+                            activity.name = newName
+                            break;
+                    }
+
+                    for (var j = 0; j < businesses.length; j++) {
+                        let business = businesses[j]
+                        for (var k = 0; k < business.hours.individualDaysData.length; k++) {
+                            let businessDay = business.hours.individualDaysData[k]
+                            if (businessHasNotBeenUsed(foundBusinesses, business) && business.subcategory === activity.name && businessDay.open.day === moment(day).day() && businessIsOpenOnTime(businessDay, day, activity)) {
+                                totalAdded++
+                                businessFound = true
+                                foundBusinesses.push(business)
+
+                                Object.keys(foundBusinesses[0]).forEach(key => {
+                                    activity[key] = foundBusinesses[0][key]
+                                })
+
+                                businesses = _(businesses).filter(function(b) {
+                                    return !foundBusinesses.includes(b)
+                                });
+                                foundBusinesses = []
+                            }
                         }
-                    })
-                    console.log("there are still " + amountMan + " business(es) that match...")
+                    }
+
+                    console.log("\n\nAHHHHH")
+                    console.log("here was the activity: ", activity)
                 }
             }
         }
@@ -1022,13 +1050,13 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
 }
 
 function getFinalListOfBusinessesFromTripStub(businesses, required) {
-    
+
     console.log("initial length of businesses before we get out of here: ", businesses.length)
-    
+
     let finalList = []
 
     businesses.forEach(b => {
-        if (getNumberOfActivitiesThatMatchCategoryInArray(finalList, b.subcategory) < (required[b.subcategory].count * 3)) {
+        if (getNumberOfActivitiesThatMatchCategoryInArray(finalList, b.subcategory) < (required[b.subcategory].count * 2)) {
             finalList.push(b)
         }
     })
