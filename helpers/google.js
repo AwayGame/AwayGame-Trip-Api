@@ -196,7 +196,9 @@ async function getBusinessesInMoreDetail(businesses) {
                     //Check to see if we're done
                     if (detailedResults.length === businesses.length) {
                         // If there are no opening hours, remove
+                        console.log("in google. BEFORE removal: ", detailedResults.length)
                         detailedResults = helpers.removeIfNoValueByKey(detailedResults, 'hours')
+                        console.log("in google. After removal: ", detailedResults.length)
                         return resolve(detailedResults)
                     }
                 } else {

@@ -774,7 +774,6 @@ module.exports = {
             let finalListOfBusinesses = getFinalListOfBusinessesFromTripStub(initialListOfBusinesses, required)
             console.log("got the list of busines: ", finalListOfBusinesses.length)
             let finalBusinessData = await getMoreDetails(finalListOfBusinesses)
-
             console.log("final list of businesses length: ", finalListOfBusinesses.length)
 
             let finalBusinesses = []
@@ -1090,7 +1089,7 @@ function getFinalListOfBusinessesFromTripStub(businesses, required) {
     let finalList = []
 
     businesses.forEach(b => {
-        if (getNumberOfActivitiesThatMatchCategoryInArray(finalList, b.subcategory) < (required[b.subcategory].count * 3)) {
+        if (getNumberOfActivitiesThatMatchCategoryInArray(finalList, b.subcategory) < (required[b.subcategory].count * 2)) {
             finalList.push(b)
         }
     })
@@ -1104,7 +1103,6 @@ function getNumberOfActivitiesThatMatchCategoryInArray(array, category) {
     let count = _.countBy(array, function(item) {
         return item.subcategory === category;
     });
-    console.log("count.true for category " + category + "?: ", count.true)
     return count.true || 0
 }
 

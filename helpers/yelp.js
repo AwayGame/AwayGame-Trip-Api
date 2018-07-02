@@ -142,7 +142,6 @@ function getBusinessesInMoreDetail(businesses) {
                 count++
                 
                 if (!result.hours) {
-                    console.log("HERE IS THE RESULT: ", results)
                     console.log("business didn't have hours!")
                     callback()
                 } else {
@@ -152,12 +151,13 @@ function getBusinessesInMoreDetail(businesses) {
                         result.subcategory = task.subcategory
                         detailedResults.push(formatBusinessResult(result))
                         callback()
-                    }, 75)
+                    }, 125)
                 }
             }).catch(e => {
+                console.log("error geting business: ", e)
                 callback()
             })
-        }, 3);
+        }, 2);
 
         businesses.forEach(business => q.push(business))
 
