@@ -47,7 +47,6 @@ function getActivitiesForTheDay() {
             } else if (timeToStop.isSameOrAfter(lunchTime) && timeToStop.isSameOrBefore(dinnerTime)) {
                 console.log("game is between lunch and dinner")
                 console.log("current time is: ", arrivalDate.format('h:mm a'))
-
                 if (parseInt(arrivalDate.format('HHmm')) >= 1000) {
                     let diffInTimes = Math.abs(moment.duration(arrivalDate.diff(timeToStop)).asMinutes())
                     diffInTimes = Math.ceil(diffInTimes / 5) * 5;
@@ -65,7 +64,6 @@ function getActivitiesForTheDay() {
                     addActivitiesFromNowUntilTimeframe('', dayActivities, diffInTimes)
                     addGame()
                 }
-
             } else if (timeToStop.isSameOrAfter(dinnerTime)) {
                 console.log("game is after dinner")
                 getFoodOption()
@@ -207,7 +205,7 @@ function addGame() {
  */
 function isGameDay() {
     console.log("game: ", game.date.format('h:mm a'))
-    console.log("arrivalDate: ", arrivalDate)
+    console.log("arrivalDate: ", arrivalDate.format('h:mm a'))
     return game.date.isSame(arrivalDate, 'day')
 }
 
@@ -383,13 +381,22 @@ function foodOptionIsInCorrectTimeframe(foodOption, timeframe) {
 function getFoodTimeframeFromCurrentTime() {
     let time = parseInt(arrivalDate.format('HHmm'))
     console.log("here is time: ", time)
-    if (Math.abs(moment.duration(dinnerTime.diff(arrivalDate)).asMinutes()) <= 60) {
+
+    if (time >= 1500) {
         return 'dinner'
-    } else if (Math.abs(moment.duration(lunchTime.diff(arrivalDate)).asMinutes()) <= 60) {
+    } else if (time >= 1200) {
         return 'lunch'
-    } else if (Math.abs(moment.duration(breakfastTime.diff(arrivalDate)).asMinutes()) <= 60) {
+    } else if (time >= 900) {
         return 'breakfast'
     }
+
+    // if (Math.abs(moment.duration(dinnerTime.diff(arrivalDate)).asMinutes()) <= 60) {
+    //     return 'dinner'
+    // } else if (Math.abs(moment.duration(lunchTime.diff(arrivalDate)).asMinutes()) <= 60) {
+    //     return 'lunch'
+    // } else if (Math.abs(moment.duration(breakfastTime.diff(arrivalDate)).asMinutes()) <= 60) {
+    //     return 'breakfast'
+    // }
 }
 
 function getTimeLeftInMinutesFromTimeframeToNextFoodOption(timeframe) {
