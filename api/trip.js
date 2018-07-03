@@ -66,10 +66,13 @@ module.exports = {
                 })
             } catch (e) {
                 console.log("error creating trip")
+                console.log(e)
                 return resolve({
                     failed: true,
                     itineraries: [{
-                        title: "Sorry, we're still testing and your trip failed. Please try again."
+                        activities: {
+                            title: "Sorry, we're still testing and your trip failed. Please try again."
+                        }
                     }]
                 })
             }

@@ -29,7 +29,9 @@ module.exports = {
             return {
                 failed: true,
                 itineraries: [{
-                    title: "Sorry, we're still testing and your trip failed. Please try again."
+                    activities: {
+                        title: "Sorry, we're still testing and your trip failed. Please try again."
+                    }
                 }]
             }
         } else {
