@@ -26,7 +26,7 @@ module.exports = {
             data.radius = "1.5"
 
             let tripStub = TripStubHelper.createTripStub(data)
-            return resolve(tripStub)
+            //return resolve(tripStub)
             
 
 
@@ -164,6 +164,7 @@ async function getGameData(tmGameKey) {
         let cachedGameData = await redisHelper.get(tmGameKey)
         if (cachedGameData) {
             cachedGameData.startTime = moment(cachedGameData.date).subtract(1, 'hour')
+            console.log("cached data start time: ", cachedGameData.startTime)
             cachedGameData.date = moment(cachedGameData.date)
             return resolve(cachedGameData)
         } else {
@@ -190,7 +191,7 @@ async function getGameData(tmGameKey) {
 
             let cacheGameResult = await redisHelper.set(tmGameKey, gameData)
 
-            gameData.startTime = moment(gameData.date).subtract(1, 'hour').format('h:mm a')
+            gameData.startTime = moment(gameData.date).subtract(1, 'hour')
             gameData.date = moment(gameData.date)
 
             resolve(gameData)
@@ -271,7 +272,7 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
                     let business = businesses[j]
                     for (var k = 0; k < business.hours.individualDaysData.length; k++) {
                         let businessDay = business.hours.individualDaysData[k]
-                        if (businessHasNotBeenUsed(foundBusinesses, business) && business.subcategory === activity.name && businessDay.open.day === moment(day).day() && businessIsOpenOnTime(businessDay, day, activity)) {
+                        if (businessHasNotBeenUsed(foundBusinesses, business) && business.subcategory === activity.name /*&& businessDay.open.day === moment(day).day() && businessIsOpenOnTime(businessDay, day, activity)*/) {
                             totalAdded++
                             businessFound = true
                             foundBusinesses.push(business)
@@ -293,7 +294,7 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
                 //The solution below is terrible. We need a better way of 
                 //choosing new categories if we run out of activities
 
-                /*let totalCount = 0
+                let totalCount = 0
                 while (!businessFound && activity.category != 'game' && totalCount < 25) {
                     totalCount++
 
@@ -323,7 +324,7 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
                         let business = businesses[j]
                         for (var k = 0; k < business.hours.individualDaysData.length; k++) {
                             let businessDay = business.hours.individualDaysData[k]
-                            if (businessHasNotBeenUsed(foundBusinesses, business) && business.subcategory === activity.name && businessDay.open.day === moment(day).day() && businessIsOpenOnTime(businessDay, day, activity)) {
+                            if (businessHasNotBeenUsed(foundBusinesses, business)) {
                                 totalAdded++
                                 businessFound = true
                                 foundBusinesses.push(business)
@@ -341,6 +342,7 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
                     }
                 }
 
+                /*
                 //Last result. Just add the first one that matches.
 
                 if (totalCount >= 5) {

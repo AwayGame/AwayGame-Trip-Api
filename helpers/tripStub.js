@@ -17,7 +17,6 @@ let arrivalDate = null,
     nextEventOption = null,
     gameTime = null
 
-
 module.exports = {
     createTripStub: (data) => {
         startNewTrip(data)
@@ -38,13 +37,15 @@ function getActivitiesForTheDay() {
 }
 
 function addActivities() {
+    console.log("current day: ", currentDay)
     while (!isEndOfDay()) {
+        console.log("time: ", arrivalDate.format('h:mm a'))
         if (needToAddGame() && game.isTBA) {
             getFoodOption('breakfast')
             nextEventOption = 'lunch'
             addActivitesUntilNextEvent()
             addGame()
-            arrivalDate.set('hour', 2200)
+            goToNextDay()
         } else if (needsBreakfast()) {
             getFoodOption('breakfast')
             nextEventOption = 'lunch'
@@ -55,12 +56,13 @@ function addActivities() {
             getFoodOption('dinner')
             nextEventOption = 'endOfDay'
         } else {
-            getFoodOption('dinner')
-            nextEventOption = 'endOfDay'
             addActivitesUntilNextEvent()
         }
     }
+
+    console.log("it's the end of the day!\n")
 }
+
 
 function needsBreakfast() {
     return arrivalDate.isSameOrAfter(breakfastWindow[0]) &&
@@ -82,23 +84,21 @@ function needsDinner() {
 
 
 function addActivitesUntilNextEvent() {
-    console.log("arrival: ", arrivalDate.format('h:mm a'))
     let nextEventWindow = getNextEventWindow()
     let activitiesToChooseFrom = getActivitiesToChooseFrom()
 
-    if (needToAddGame() && nextEventWindow.isSameOrAfter(game.startTime)) {
-        console.log("it's time to add the game...")
-        console.log("current time: ", arrivalDate.format('h:mm a'))
-        console.log("event window: ", nextEventWindow)
+    if (needToAddGame() && getDifferenceInMinutes(arrivalDate, game.startTime) <= 150) {
+        //add shortest activity
+        // let shortest = helpers.getActivityWithShortestDuration(activitiesToChooseFrom)[0]
+        // console.log("shortest: ", shortest)
+        // addOptionToTrip(shortest)
         addGame()
     } else {
-
         while (arrivalDate.isBefore(nextEventWindow)) {
             let index = _.random(0, activitiesToChooseFrom.length - 1)
             addOptionToTrip(activitiesToChooseFrom[index])
         }
     }
-
 }
 
 function getNextEventWindow() {
@@ -135,10 +135,6 @@ function getActivitiesToChooseFrom() {
     }
 }
 
-
-
-
-
 //------------------------------
 //----------HELPER FUNCTIONS----
 //------------------------------
@@ -148,8 +144,6 @@ function addedFoodOption(timeframe) {
         return a.timeframe && a.timeframe === timeframe
     })
 }
-
-
 
 /**
  * Checks to see if we need to add the game to the user's trip stub
@@ -301,12 +295,19 @@ function isEndOfTrip() {
  * @return {Void} This function does not return anything
  */
 function goToNextDay() {
-    if (tripStub[currentDay].length) {
+    console.log("current time: ", parseInt(arrivalDate.format('HHmm')))
+    console.log("before: ", arrivalDate.format('YYYY-MM-DD, h:mm a'))
+
+
+    if (parseInt(arrivalDate.format('HHmm')) < 1000) {
+        arrivalDate.set('hour', 9);
+        arrivalDate.set('minute', 0);
+    } else {
+        arrivalDate.set('hour', 9);
+        arrivalDate.set('minute', 0);
         arrivalDate.add(1, 'days');
     }
 
-    arrivalDate.set('hour', 9);
-    arrivalDate.set('minute', 0);
     currentDay = arrivalDate.format('YYYY-MM-DD')
     dinnerTime = moment(currentDay + helpers.convert24HourIntToString(config.timeframes.dinner))
     lunchTime = moment(currentDay + helpers.convert24HourIntToString(config.timeframes.lunch))
@@ -314,7 +315,7 @@ function goToNextDay() {
     endOfDay = moment(currentDay + helpers.convert24HourIntToString(config.timeframes.endOfDay))
     breakfastWindow = [moment(currentDay + helpers.convert24HourIntToString(900)), moment(currentDay + helpers.convert24HourIntToString(1030))]
     lunchWindow = [moment(currentDay + helpers.convert24HourIntToString(1200)), moment(currentDay + helpers.convert24HourIntToString(1400))]
-    dinnerWindow = [moment(currentDay + helpers.convert24HourIntToString(1800)), moment(currentDay + helpers.convert24HourIntToString(1930))]
+    dinnerWindow = [moment(currentDay + helpers.convert24HourIntToString(1800)), moment(currentDay + helpers.convert24HourIntToString(2000))]
 
     if (isLastDay()) {
         endOfDay = departureDate
@@ -347,7 +348,7 @@ function getFoodOption(timeframe) {
  * @return {Boolean}
  */
 function foodOptionIsValid(optionToCheck, timeframe) {
-    return (!foodNameInDay(optionToCheck) && foodOptionIsInCorrectTimeframe(optionToCheck, timeframe))
+    return (!foodNameInDay(optionToCheck) && !foodCategoryInDay(optionToCheck) && foodOptionIsInCorrectTimeframe(optionToCheck, timeframe))
 }
 
 /**
@@ -357,11 +358,11 @@ function foodOptionIsValid(optionToCheck, timeframe) {
  * @return {Boolean}
  */
 
-// function foodCategoryInDay(foodOption) {
-//     return tripStub[currentDay].some(option => {
-//         return option.timeframe === foodOption
-//     })
-// }
+function foodCategoryInDay(foodOption) {
+    return tripStub[currentDay].some(option => {
+        return option.timeframe === foodOption
+    })
+}
 
 /**
  * Checks to see if we have added a specific type of food option to the
