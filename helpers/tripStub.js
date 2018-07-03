@@ -84,6 +84,18 @@ function needsDinner() {
 
 
 function addActivitesUntilNextEvent() {
+
+    if (!nextEventOption) {
+        console.log("user is in a weird spot. Need to figure out what is next")
+
+        if (arrivalDate.isSameOrBefore(dinnerWindow[1]) && arrivalDate.isSameOrAfter(lunchWindow[1])) {
+            nextEventOption = 'dinner'
+        } else if (arrivalDate.isSameOrBefore(lunchWindow[1]) && arrivalDate.isSameOrAfter(breakfastWindow[1])) {
+            nextEventOption = 'lunch'
+        }
+
+    }
+
     let nextEventWindow = getNextEventWindow()
     let activitiesToChooseFrom = getActivitiesToChooseFrom()
 
@@ -94,6 +106,9 @@ function addActivitesUntilNextEvent() {
         // addOptionToTrip(shortest)
         addGame()
     } else {
+        console.log("is arrival before window")
+        console.log(arrivalDate.format('h:mm a'))
+        console.log("nextEventWindow: ", nextEventWindow.format('h:mm a'))
         while (arrivalDate.isBefore(nextEventWindow)) {
             let index = _.random(0, activitiesToChooseFrom.length - 1)
             addOptionToTrip(activitiesToChooseFrom[index])
@@ -102,6 +117,7 @@ function addActivitesUntilNextEvent() {
 }
 
 function getNextEventWindow() {
+    console.log("nextEventOption: ", nextEventOption)
     switch (nextEventOption) {
         case 'lunch':
             return lunchWindow[0]
