@@ -50,13 +50,14 @@ function getActivitiesForTheDay() {
     checkIfEndOfTrip()
 }
 
+let COUNT = 0
+
 function addActivities() {
     console.log("current day: ", currentDay)
-    let COUNT = 0
     while (!isEndOfDay()) {
         console.log("count: ", COUNT)
 
-        if (COUNT >= 100) {
+        if (COUNT >= 750) {
             arrivalDate = departureDate
             failed = true
             break
@@ -91,8 +92,6 @@ function addActivities() {
         } else if (nextEventOption === 'lunch' && arrivalDate.isSameOrAfter(lunchWindow[1])) {
             nextEventOption = 'dinner'
         }
-
-        COUNT++
     }
 
     console.log("it's the end of the day!\n")
@@ -119,6 +118,7 @@ function needsDinner() {
 
 
 function addActivitesUntilNextEvent() {
+    console.log("add add")
 
     if (!nextEventOption) {
         console.log("user is in a weird spot. Need to figure out what is next")
@@ -141,6 +141,7 @@ function addActivitesUntilNextEvent() {
         console.log(arrivalDate.format('h:mm a'))
 
         while (arrivalDate.isBefore(nextEventWindow)) {
+            COUNT++
             let index = _.random(0, activitiesToChooseFrom.length - 1)
             addOptionToTrip(activitiesToChooseFrom[index])
         }
@@ -381,6 +382,10 @@ function goToNextDay() {
  */
 function getFoodOption(timeframe) {
     while (!foodOptionIsValid(diningOptions[0], timeframe)) {
+        COUNT++
+        if(COUNT >= 750) {
+            break
+        }
         diningOptions = _.shuffle(diningOptions)
     }
 
