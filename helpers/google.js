@@ -204,10 +204,12 @@ async function getBusinessesInMoreDetail(businesses) {
                 } else {
                     //handle error here...
                     console.log("error getting googld full: ", response)
+                    return reject(500)
                 }
             }).catch(err => {
                 console.log("error getting details for google: ", err)
                 console.log("failed on this url: ", url)
+                return reject(err)
             })
         })
     })

@@ -15,10 +15,6 @@ const _ = require('underscore')
 module.exports = {
     createTrip: (data) => {
         return new Promise(async(resolve, reject) => {
-            
-
-
-
             addCoffeeShopsPreferenceIfNotInFoodPreferences(data)
             data.gameData = await getGameData('tm-game-' + data.gameId)
             data.lat = (!data.gameData.location) ? data.gameData['location.lat'] : data.gameData.location.lat
@@ -26,76 +22,58 @@ module.exports = {
             data.radius = "1.5"
 
             let tripStub = TripStubHelper.createTripStub(data)
-            
-            if(tripStub.failed){
+
+            if (tripStub.failed) {
                 return resolve(tripStub)
             }
-            return resolve(tripStub)
+            //return resolve(tripStub)
 
-            
+            try {
+                sfdsijdfisjdfoisdofij
+                let required = helpers.getRequiredBusinessesFromTripStub(tripStub)
+                console.log("GETTING DATA...")
+                let businessData = await getListOfBusinessesFromProviders(data, required)
+                console.log("got business data")
 
+                let initialListOfBusinesses = []
 
+                for (var i = 0; i < businessData.length; i++) {
+                    initialListOfBusinesses.push(...businessData[i])
+                }
 
+                console.log("Number of businesses before we take stuff out: ", initialListOfBusinesses.length)
+                initialListOfBusinesses = _.uniq(initialListOfBusinesses, 'id');
+                initialListOfBusinesses = _.uniq(initialListOfBusinesses, 'name');
+                initialListOfBusinesses = sortByUserPreferenceAndRemoveBusinessesWithoutRequiredParameters(initialListOfBusinesses, data.preferences)
+                console.log("Number of businesses after we take stuff out: ", initialListOfBusinesses.length)
 
+                //@TODO: Only pull what we need
+                let finalListOfBusinesses = getFinalListOfBusinessesFromTripStub(initialListOfBusinesses, required)
+                //let finalListOfBusinesses = initialListOfBusinesses
+                console.log("got the list of busines: ", finalListOfBusinesses.length)
+                let finalBusinessData = await getMoreDetails(finalListOfBusinesses)
+                console.log("final list of businesses length: ", finalListOfBusinesses.length)
 
+                let finalBusinesses = []
+                for (var i = 0; i < finalBusinessData.length; i++) {
+                    console.log("lemgth of finalBusinessData at index " + i + " is: ", finalBusinessData[i].length)
+                    finalBusinesses.push(...finalBusinessData[i])
+                }
+                console.log("fetched this many for final: ", finalBusinesses.length)
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            let required = helpers.getRequiredBusinessesFromTripStub(tripStub)
-            console.log("GETTING DATA...")
-            let businessData = await getListOfBusinessesFromProviders(data, required)
-            console.log("got business data")
-
-            let initialListOfBusinesses = []
-
-            for (var i = 0; i < businessData.length; i++) {
-                initialListOfBusinesses.push(...businessData[i])
+                formatTripFromBusinesses(tripStub, finalBusinesses, data).then(trip => {
+                    console.log("\n\nfinished creating trip. Here it is:", trip)
+                    return resolve(trip)
+                })
+            } catch (e) {
+                console.log("error creating trip")
+                return resolve({
+                    failed: true,
+                    itineraries: [{
+                        title: "Sorry, we're still testing and your trip failed. Please try again."
+                    }]
+                })
             }
-
-            console.log("Number of businesses before we take stuff out: ", initialListOfBusinesses.length)
-            initialListOfBusinesses = _.uniq(initialListOfBusinesses, 'id');
-            initialListOfBusinesses = _.uniq(initialListOfBusinesses, 'name');
-            initialListOfBusinesses = sortByUserPreferenceAndRemoveBusinessesWithoutRequiredParameters(initialListOfBusinesses, data.preferences)
-            console.log("Number of businesses after we take stuff out: ", initialListOfBusinesses.length)
-
-            //@TODO: Only pull what we need
-            let finalListOfBusinesses = getFinalListOfBusinessesFromTripStub(initialListOfBusinesses, required)
-            //let finalListOfBusinesses = initialListOfBusinesses
-            console.log("got the list of busines: ", finalListOfBusinesses.length)
-            let finalBusinessData = await getMoreDetails(finalListOfBusinesses)
-            console.log("final list of businesses length: ", finalListOfBusinesses.length)
-
-            let finalBusinesses = []
-            for (var i = 0; i < finalBusinessData.length; i++) {
-                console.log("lemgth of finalBusinessData at index " + i + " is: ", finalBusinessData[i].length)
-                finalBusinesses.push(...finalBusinessData[i])
-            }
-            console.log("fetched this many for final: ", finalBusinesses.length)
-
-            formatTripFromBusinesses(tripStub, finalBusinesses, data).then(trip => {
-                console.log("\n\nfinished creating trip. Here it is:", trip)
-                return resolve(trip)
-            })
         })
     }
 }
@@ -242,16 +220,16 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
 
                 tripResponse['itineraries'].forEach(day => {
                     day.activities.forEach((a, index) => {
-                        if (index) {
+                        if (!index || (index + 1) === day.activities.length) {
+                            day.activities[index].needsUber = true
+                            incrementAndCheckIfFinished()
+                        } else {
                             let activityOne = day.activities[index - 1]
 
                             needsUber(activityOne, a).then(needed => {
                                 activityOne.needsUber = needed
                                 incrementAndCheckIfFinished()
                             })
-                        } else {
-                            day.activities[index].needsUber = false
-                            incrementAndCheckIfFinished()
                         }
                     })
                 })
@@ -278,7 +256,7 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
                     let business = businesses[j]
                     for (var k = 0; k < business.hours.individualDaysData.length; k++) {
                         let businessDay = business.hours.individualDaysData[k]
-                        if (businessHasNotBeenUsed(foundBusinesses, business) && business.subcategory === activity.name /*&& businessDay.open.day === moment(day).day() && businessIsOpenOnTime(businessDay, day, activity)*/) {
+                        if (businessHasNotBeenUsed(foundBusinesses, business) && business.subcategory === activity.name /*&& businessDay.open.day === moment(day).day() && businessIsOpenOnTime(businessDay, day, activity)*/ ) {
                             totalAdded++
                             businessFound = true
                             foundBusinesses.push(business)
