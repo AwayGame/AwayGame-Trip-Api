@@ -26,7 +26,7 @@ module.exports = {
             if (tripStub.failed) {
                 return resolve(tripStub)
             }
-            return resolve(tripStub)
+            //return resolve(tripStub)
 
             try {
                 let required = helpers.getRequiredBusinessesFromTripStub(tripStub)
