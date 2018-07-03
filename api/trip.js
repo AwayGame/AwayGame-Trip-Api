@@ -26,7 +26,12 @@ module.exports = {
             data.radius = "1.5"
 
             let tripStub = TripStubHelper.createTripStub(data)
+            
+            if(tripStub.failed){
+                return resolve(tripStub)
+            }
             return resolve(tripStub)
+
             
 
 
@@ -431,7 +436,7 @@ function addCoffeeShopsPreferenceIfNotInFoodPreferences(data) {
 function needsUber(activityOne, activityTwo) {
     return new Promise((resolve, reject) => {
         if (activityTwo.category === 'game') return resolve(true)
-        if (!activityOne.location || !activityTwo.location) return resolve(false)
+        if (!activityOne.location || !activityTwo.location) return resolve(true)
 
         distance.get({
                 origin: activityOne.location.lat + ',' + activityOne.location.long,

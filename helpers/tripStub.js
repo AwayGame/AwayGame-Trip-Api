@@ -16,6 +16,7 @@ let arrivalDate = null,
     dinnerWindow = null,
     nextEventOption = null,
     gameTime = null
+failed = null
 
 module.exports = {
     createTripStub: (data) => {
@@ -23,7 +24,18 @@ module.exports = {
         setPreferencesToSearchOn(data)
         getDays()
         Object.keys(tripStub).forEach(day => getActivitiesForTheDay())
-        return tripStub
+
+        if (failed) {
+            return {
+                failed: true,
+                itineraries: [{
+                    title: "Sorry, we're still testing and your trip failed. Please try again."
+                }]
+            }
+        } else {
+            return tripStub
+
+        }
     }
 }
 
@@ -38,7 +50,16 @@ function getActivitiesForTheDay() {
 
 function addActivities() {
     console.log("current day: ", currentDay)
+    let COUNT = 0
     while (!isEndOfDay()) {
+        console.log("count: ", COUNT)
+
+        if (COUNT >= 100) {
+            arrivalDate = departureDate
+            failed = true
+            break
+        }
+
         console.log("time: ", arrivalDate.format('h:mm a'))
         if (needToAddGame() && game.isTBA) {
             getFoodOption('breakfast')
@@ -60,14 +81,16 @@ function addActivities() {
         }
 
         console.log("going to the next event: ", nextEventOption)
-        
-        if(nextEventOption === 'dinner' && arrivalDate.isSameOrAfter(dinnerWindow[1])) {
+
+        if (nextEventOption === 'dinner' && arrivalDate.isSameOrAfter(dinnerWindow[1])) {
             nextEventOption = 'endOfDay'
-        } else if(nextEventOption === 'breakfast' && arrivalDate.isSameOrAfter(breakfastWindow[1])) {
+        } else if (nextEventOption === 'breakfast' && arrivalDate.isSameOrAfter(breakfastWindow[1])) {
             nextEventOption = 'lunch'
-        } else if(nextEventOption === 'lunch' && arrivalDate.isSameOrAfter(lunchWindow[1])) {
+        } else if (nextEventOption === 'lunch' && arrivalDate.isSameOrAfter(lunchWindow[1])) {
             nextEventOption = 'dinner'
         }
+
+        COUNT++
     }
 
     console.log("it's the end of the day!\n")
