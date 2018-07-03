@@ -11,7 +11,7 @@ const graphQLParser = require('json-graphql');
 const YelpGraphQlClient = new GraphQLClient(config.yelp.yelpGraphQlApiUrl, {
     headers: {
         Authorization: "Bearer " + config.yelp.fusionApiKey,
-    },
+    }
 })
 
 module.exports = {
@@ -19,6 +19,8 @@ module.exports = {
         return new Promise((resolve, reject) => {
             searchForBusinesses(data, required).then(results => {
                 return resolve(results)
+            }).catch(e => {
+                return reject(e)
             })
         })
     },
@@ -26,17 +28,12 @@ module.exports = {
         return new Promise((resolve, reject) => {
             getBusinessesInMoreDetail(businesses).then(detailedBusinesses => {
                 return resolve(detailedBusinesses)
+            }).catch(e => {
+                return reject(e)
             })
         })
     }
 }
-
-/**
- * 
- * Function definitions
- * 
- */
-
 
 function searchForBusinesses(data, required) {
     return new Promise((resolve, reject) => {
@@ -93,6 +90,7 @@ function searchForBusinesses(data, required) {
                         callback()
                     }).catch(e => {
                         console.log("error from yelp: ", e)
+                        callback()
                     });
                 }
             })

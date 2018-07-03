@@ -29,7 +29,6 @@ module.exports = {
             //return resolve(tripStub)
 
             try {
-                sfdsijdfisjdfoisdofij
                 let required = helpers.getRequiredBusinessesFromTripStub(tripStub)
                 console.log("GETTING DATA...")
                 let businessData = await getListOfBusinessesFromProviders(data, required)

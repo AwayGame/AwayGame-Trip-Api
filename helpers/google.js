@@ -9,6 +9,9 @@ module.exports = {
             let queryObjects = getQueryData(data, required)
             getBusinesses(queryObjects, required).then((businesses) => {
                 return resolve(businesses)
+            }).catch(err => {
+                console.log("error getting initial with google: ", err)
+                return reject(err)
             })
         })
     },
@@ -22,6 +25,7 @@ module.exports = {
                 return resolve(detailedBusinesses)
             }).catch(err => {
                 console.log("error getting details in google: ", err)
+                return reject(err)
             })
         })
     }
@@ -67,6 +71,9 @@ function getBusinesses(queryObjects, required) {
 
                         return resolve(results)
                     }
+                }).catch(e => {
+                    console.log("error here: ", e)
+                    return reject(e)
                 })
             }
         })
@@ -111,6 +118,7 @@ function getBusinesses(queryObjects, required) {
                             }
                         } else {
                             console.log("we got an error...: ", err)
+                            return reject(err)
                         }
                     })
                 }
