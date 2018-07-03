@@ -58,6 +58,16 @@ function addActivities() {
         } else {
             addActivitesUntilNextEvent()
         }
+
+        console.log("going to the next event: ", nextEventOption)
+        
+        if(nextEventOption === 'dinner' && arrivalDate.isSameOrAfter(dinnerWindow[1])) {
+            nextEventOption = 'endOfDay'
+        } else if(nextEventOption === 'breakfast' && arrivalDate.isSameOrAfter(breakfastWindow[1])) {
+            nextEventOption = 'lunch'
+        } else if(nextEventOption === 'lunch' && arrivalDate.isSameOrAfter(lunchWindow[1])) {
+            nextEventOption = 'dinner'
+        }
     }
 
     console.log("it's the end of the day!\n")
@@ -87,7 +97,6 @@ function addActivitesUntilNextEvent() {
 
     if (!nextEventOption) {
         console.log("user is in a weird spot. Need to figure out what is next")
-
         if (arrivalDate.isSameOrBefore(dinnerWindow[1]) && arrivalDate.isSameOrAfter(lunchWindow[1])) {
             nextEventOption = 'dinner'
         } else if (arrivalDate.isSameOrBefore(lunchWindow[1]) && arrivalDate.isSameOrAfter(breakfastWindow[1])) {
@@ -95,17 +104,12 @@ function addActivitesUntilNextEvent() {
         } else {
             nextEventOption = 'endOfDay'
         }
-
     }
 
     let nextEventWindow = getNextEventWindow()
     let activitiesToChooseFrom = getActivitiesToChooseFrom()
 
     if (needToAddGame() && getDifferenceInMinutes(arrivalDate, game.startTime) <= 150) {
-        //add shortest activity
-        // let shortest = helpers.getActivityWithShortestDuration(activitiesToChooseFrom)[0]
-        // console.log("shortest: ", shortest)
-        // addOptionToTrip(shortest)
         addGame()
     } else {
         console.log("is arrival before window")
