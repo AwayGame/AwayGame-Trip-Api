@@ -26,7 +26,7 @@ module.exports = {
             data.radius = "1.5"
 
             let tripStub = TripStubHelper.createTripStub(data)
-            //return resolve(tripStub)
+            return resolve(tripStub)
             
 
 
@@ -170,6 +170,7 @@ async function getGameData(tmGameKey) {
         } else {
             data = await TicketMasterHelper.getGameDetails(_.last(tmGameKey.split('-')))
 
+            console.log("here is the game: ", data)
             let time = data.dates.start.dateTime
             let latLngStr = data._embedded.venues[0].location.latitude + "," + data._embedded.venues[0].location.longitude
 
