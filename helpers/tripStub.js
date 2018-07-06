@@ -18,6 +18,8 @@ let arrivalDate = null,
     gameTime = null,
     failed = false
 
+let COUNT = 0
+
 module.exports = {
     createTripStub: (data) => {
         startNewTrip(data)
@@ -56,15 +58,13 @@ function getActivitiesForTheDay() {
     checkIfEndOfTrip()
 }
 
-let COUNT = 0
-
 function addActivities() {
     console.log("current day: ", currentDay)
     while (!isEndOfDay()) {
         console.log("count: ", COUNT)
 
         if (COUNT >= 750) {
-            console.log("HEY HEY we need a break. Breaking")
+            console.log("\n\nHEY HEY we need a break. Breaking")
             arrivalDate = departureDate
             failed = true
             break
