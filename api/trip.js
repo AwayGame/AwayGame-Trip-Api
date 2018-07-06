@@ -22,11 +22,19 @@ module.exports = {
             data.radius = "1.5"
 
             let tripStub = TripStubHelper.createTripStub(data)
-
+            tripStub.failed = true
             if (tripStub.failed) {
-                return resolve(tripStub)
+                return resolve({
+                    failed: true,
+                    itineraries: [{
+                        activities: [{
+                            name: "Sorry, we're still testing and your trip failed. Please try again."
+                        }]
+                    }]
+                })
             }
-            return resolve(tripStub)
+
+            //return resolve(tripStub)
 
             try {
                 let required = helpers.getRequiredBusinessesFromTripStub(tripStub)
