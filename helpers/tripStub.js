@@ -16,7 +16,7 @@ let arrivalDate = null,
     dinnerWindow = null,
     nextEventOption = null,
     gameTime = null,
-    failed = null
+    failed = false
 
 module.exports = {
     createTripStub: (data) => {
@@ -26,6 +26,7 @@ module.exports = {
         Object.keys(tripStub).forEach(day => getActivitiesForTheDay())
 
         if (failed) {
+            console.log("\n we failed. Returning the default trip stub")
             return {
                 failed: true,
                 itineraries: [{
@@ -35,8 +36,8 @@ module.exports = {
                 }]
             }
         } else {
+            console.log("we got a good trip stub. Returning it")
             return tripStub
-
         }
     }
 }
