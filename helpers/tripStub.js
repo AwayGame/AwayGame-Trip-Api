@@ -15,8 +15,8 @@ let arrivalDate = null,
     lunchWindow = null,
     dinnerWindow = null,
     nextEventOption = null,
-    gameTime = null
-failed = null
+    gameTime = null,
+    failed = null
 
 module.exports = {
     createTripStub: (data) => {
@@ -42,6 +42,11 @@ module.exports = {
 }
 
 function getActivitiesForTheDay() {
+    if(failed){
+        console.log("failed returning in getActivitiesForTheDay")
+        return
+    }
+
     if (arrivalDate.isBefore(breakfastTime)) {
         arrivalDate.set('hour', 9)
     }
@@ -58,6 +63,7 @@ function addActivities() {
         console.log("count: ", COUNT)
 
         if (COUNT >= 750) {
+            console.log("HEY HEY we need a break. Breaking")
             arrivalDate = departureDate
             failed = true
             break
@@ -92,6 +98,10 @@ function addActivities() {
         } else if (nextEventOption === 'lunch' && arrivalDate.isSameOrAfter(lunchWindow[1])) {
             nextEventOption = 'dinner'
         }
+    }
+
+    if(failed){
+        return
     }
 
     console.log("it's the end of the day!\n")
@@ -444,6 +454,12 @@ function foodOptionIsInCorrectTimeframe(foodOption, timeframe) {
 }
 
 function checkIfEndOfTrip() {
+    if(failed){
+        console.log("failed returning in checkIfEndOfTrip")
+        return
+    }
+
+    console.log("checking to see if the user's trip has ended")
     if (!isEndOfTrip()) {
         goToNextDay()
     } else {
