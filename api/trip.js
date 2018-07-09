@@ -33,7 +33,7 @@ module.exports = {
                 })
             }
 
-            //return resolve(tripStub)
+            return resolve(tripStub)
 
             try {
                 let required = helpers.getRequiredBusinessesFromTripStub(tripStub)
@@ -244,6 +244,7 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
                 })
 
                 function incrementAndCheckIfFinished() {
+                    console.log("adding to count")
                     count++
                     if (count === sum) {
                         return resolve(tripResponse)
@@ -334,34 +335,6 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
                         }
                     }
                 }
-
-                /*
-                //Last result. Just add the first one that matches.
-
-                if (totalCount >= 5) {
-                    console.log("\n\n\n\n\n\n\n\nWe hit the failsafe...with this activity: ", activity)
-                    for (var j = 0; j < businesses.length; j++) {
-                        let business = businesses[j]
-                        for (var k = 0; k < business.hours.individualDaysData.length; k++) {
-                            let businessDay = business.hours.individualDaysData[k]
-                            if (businessHasNotBeenUsed(foundBusinesses, business) && business.category === activity.category) {
-                                totalAdded++
-                                businessFound = true
-                                foundBusinesses.push(business)
-
-                                Object.keys(foundBusinesses[0]).forEach(key => {
-                                    activity[key] = foundBusinesses[0][key]
-                                })
-
-                                businesses = _(businesses).filter(function(b) {
-                                    return !foundBusinesses.includes(b)
-                                });
-                                foundBusinesses = []
-                                break
-                            }
-                        }
-                    }
-                }*/
             }
         }
 

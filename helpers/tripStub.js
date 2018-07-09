@@ -16,16 +16,18 @@ let arrivalDate = null,
     dinnerWindow = null,
     nextEventOption = null,
     gameTime = null,
-    failed = false
-
-let COUNT = 0
+    failed = false,
+    COUNT = null
 
 module.exports = {
     createTripStub: (data) => {
         startNewTrip(data)
+        addExtraFoodCategoriesIfNeeded(data)
         setPreferencesToSearchOn(data)
         getDays()
         Object.keys(tripStub).forEach(day => getActivitiesForTheDay())
+
+        console.log("\n\ncount at the end of it: ", COUNT)
 
         if (failed) {
             console.log("\n we failed. Returning the default trip stub")
@@ -61,9 +63,7 @@ function getActivitiesForTheDay() {
 function addActivities() {
     console.log("current day: ", currentDay)
     while (!isEndOfDay()) {
-        console.log("count: ", COUNT)
-
-        if (COUNT >= 750) {
+        if (COUNT >= 2000) {
             console.log("\n\nHEY HEY we need a break. Breaking")
             arrivalDate = departureDate
             failed = true
@@ -152,6 +152,7 @@ function addActivitesUntilNextEvent() {
         console.log(arrivalDate.format('h:mm a'))
 
         while (arrivalDate.isBefore(nextEventWindow)) {
+            console.log("increasing count because " + arrivalDate.format('h:mm a') + " is before " + nextEventWindow.format('h:mm a'))
             COUNT++
             let index = _.random(0, activitiesToChooseFrom.length - 1)
             addOptionToTrip(activitiesToChooseFrom[index])
@@ -216,11 +217,9 @@ function needToAddGame() {
 }
 
 function addGame() {
-    console.log("\nHere is time before we add game: ", arrivalDate.format('h:mm a'))
     tripStub[currentDay].push(game)
     arrivalDate.add(helpers.getTimeDurationForGame(game.classification), 'm')
     arrivalDate.add(60, 'm')
-    console.log("Game has been added. Here is the time now: ", arrivalDate.format('h:mm a'))
 }
 
 /**
@@ -309,6 +308,7 @@ function startNewTrip(data) {
     lunchWindow = [moment(currentDay + helpers.convert24HourIntToString(1100)), moment(currentDay + helpers.convert24HourIntToString(1400))]
     dinnerWindow = [moment(currentDay + helpers.convert24HourIntToString(1800)), moment(currentDay + helpers.convert24HourIntToString(1930))]
     gameTime = game.startTime
+    COUNT = 0
 }
 
 function isLastDay() {
@@ -393,8 +393,9 @@ function goToNextDay() {
  */
 function getFoodOption(timeframe) {
     while (!foodOptionIsValid(diningOptions[0], timeframe)) {
+        console.log("increasing count because food option wasn't valid")
         COUNT++
-        if(COUNT >= 750) {
+        if(COUNT >= 2000) {
             break
         }
         diningOptions = _.shuffle(diningOptions)
@@ -413,7 +414,7 @@ function getFoodOption(timeframe) {
  * @return {Boolean}
  */
 function foodOptionIsValid(optionToCheck, timeframe) {
-    return (!foodNameInDay(optionToCheck) && !foodCategoryInDay(optionToCheck) && foodOptionIsInCorrectTimeframe(optionToCheck, timeframe))
+    return (!foodCategoryInDay(optionToCheck) && foodOptionIsInCorrectTimeframe(optionToCheck, timeframe))
 }
 
 /**
@@ -426,19 +427,6 @@ function foodOptionIsValid(optionToCheck, timeframe) {
 function foodCategoryInDay(foodOption) {
     return tripStub[currentDay].some(option => {
         return option.timeframe === foodOption
-    })
-}
-
-/**
- * Checks to see if we have added a specific type of food option to the
- * current day. For example, we do not want a user eating Italian twice
- * in one day
- * @param  {Object} foodOption The option to check
- * @return {Boolean}
- */
-function foodNameInDay(foodOption) {
-    return tripStub[currentDay].some(option => {
-        return option.name === foodOption.name
     })
 }
 
@@ -465,5 +453,24 @@ function checkIfEndOfTrip() {
         goToNextDay()
     } else {
         return
+    }
+}
+
+
+function addExtraFoodCategoriesIfNeeded(data) {
+    let lunchOptionPresent = data.preferences.food.some(option => {
+        return _.contains(config.diningOptionTimingPreferences[option], 'lunch')
+    })
+
+    let dinnerOptionPresent = data.preferences.food.some(option => {
+        return _.contains(config.diningOptionTimingPreferences[option], 'dinner')
+    })
+
+    if(!lunchOptionPresent){
+        data.preferences.food.push('fastCasual')
+    }
+
+    if(!dinnerOptionPresent){
+        data.preferences.food.push('localCuisine')
     }
 }
