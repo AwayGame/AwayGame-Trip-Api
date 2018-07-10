@@ -309,6 +309,7 @@ function startNewTrip(data) {
     dinnerWindow = [moment(currentDay + helpers.convert24HourIntToString(1800)), moment(currentDay + helpers.convert24HourIntToString(1930))]
     gameTime = game.startTime
     COUNT = 0
+    failed = false
 }
 
 function isLastDay() {
