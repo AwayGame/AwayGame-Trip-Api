@@ -99,6 +99,8 @@ function addActivities() {
             nextEventOption = 'lunch'
         } else if (nextEventOption === 'lunch' && arrivalDate.isSameOrAfter(lunchWindow[1])) {
             nextEventOption = 'dinner'
+        } else {
+            console.log("we got here mane. " + nextEventOption)
         }
     }
 
@@ -153,6 +155,7 @@ function addActivitesUntilNextEvent() {
         console.log(arrivalDate.format('h:mm a'))
 
         while (arrivalDate.isBefore(nextEventWindow)) {
+            console.log("increasing count because date is before nextEventWindow")
             COUNT++
             let index = _.random(0, activitiesToChooseFrom.length - 1)
             addOptionToTrip(activitiesToChooseFrom[index])
@@ -393,16 +396,18 @@ function goToNextDay() {
  * @return {Void}     This function does not return anything
  */
 function getFoodOption(timeframe) {
-    while (!foodOptionIsValid(diningOptions[0], timeframe)) {
-        console.log("increasing count because food option wasn't valid")
+    let foodOption = diningOptions[0]
+    
+    while (!foodOptionIsValid(foodOption, timeframe)) {
+        console.log("increasing food")
         COUNT++
         if(COUNT >= 2000) {
             break
         }
         diningOptions = _.shuffle(diningOptions)
+        foodOption = diningOptions[0]
     }
 
-    let foodOption = diningOptions[0]
     foodOption.timeframe = timeframe
     addOptionToTrip(foodOption)
 }
@@ -416,6 +421,20 @@ function getFoodOption(timeframe) {
  */
 function foodOptionIsValid(optionToCheck, timeframe) {
     return (!foodCategoryInDay(optionToCheck) && foodOptionIsInCorrectTimeframe(optionToCheck, timeframe))
+}
+
+
+/**
+ * Checks to see if we have added a specific type of food option to the
+ * current day. For example, we do not want a user eating Italian twice
+ * in one day
+ * @param  {Object} foodOption The option to check
+ * @return {Boolean}
+ */
+function foodNameInDay(foodOption) {
+    return tripStub[currentDay].some(option => {
+        return option.name === foodOption.name
+    })
 }
 
 /**

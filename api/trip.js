@@ -244,7 +244,6 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
                 })
 
                 function incrementAndCheckIfFinished() {
-                    console.log("adding to count")
                     count++
                     if (count === sum) {
                         return resolve(tripResponse)
