@@ -26,6 +26,7 @@ module.exports = {
         setPreferencesToSearchOn(data)
         getDays()
         Object.keys(tripStub).forEach(day => getActivitiesForTheDay())
+        removeEmptyDays()
 
         console.log("\n\ncount at the end of it: ", COUNT)
 
@@ -152,7 +153,6 @@ function addActivitesUntilNextEvent() {
         console.log(arrivalDate.format('h:mm a'))
 
         while (arrivalDate.isBefore(nextEventWindow)) {
-            console.log("increasing count because " + arrivalDate.format('h:mm a') + " is before " + nextEventWindow.format('h:mm a'))
             COUNT++
             let index = _.random(0, activitiesToChooseFrom.length - 1)
             addOptionToTrip(activitiesToChooseFrom[index])
@@ -473,4 +473,12 @@ function addExtraFoodCategoriesIfNeeded(data) {
     if(!dinnerOptionPresent){
         data.preferences.food.push('localCuisine')
     }
+}
+
+function removeEmptyDays() {
+    Object.keys(tripStub).forEach(day => {
+        if(!tripStub[day].length){
+            delete tripStub[day]
+        }
+    })
 }
