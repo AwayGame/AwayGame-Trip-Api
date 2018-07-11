@@ -194,9 +194,7 @@ async function getGameData(tmGameKey) {
 
 function formatTripFromBusinesses(tripStub, businesses, data) {
     return new Promise((resolve, reject) => {
-        console.log("getting activities for the trip")
         Object.keys(tripStub).forEach(day => getBusinessAndBackupOpenAtAvailableTime(data, day))
-        console.log("finished and checking Uber")
         let tripResponse = {
             "itineraries": Object.keys(tripStub).map(tripStubKey => {
                 return {

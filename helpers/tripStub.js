@@ -220,6 +220,7 @@ function needToAddGame() {
 }
 
 function addGame() {
+    game.startTime = game.startTime.format('h:mm a')
     tripStub[currentDay].push(game)
     arrivalDate.add(helpers.getTimeDurationForGame(game.classification), 'm')
     arrivalDate.add(60, 'm')
