@@ -1,3 +1,6 @@
+const google = require('google')
+google.resultsPerPage = 1
+
 const helpers = require('./helpers')
 const GoogleMapsClient = require('@google/maps').createClient({
     key: config.google.placesApiKey
@@ -10,21 +13,19 @@ module.exports = {
             getBusinesses(queryObjects, required).then((businesses) => {
                 return resolve(businesses)
             }).catch(err => {
-                console.log("error getting initial with google: ", err)
+                logger.error("error getting initial with google: ", err)
                 return reject(err)
             })
         })
     },
     getMoreDetails: async(businesses) => {
-        console.log("in Google. Getting more details for this many: ", businesses.length)
+        logger.info("in Google. Getting more details for this many: ", businesses.length)
         return new Promise((resolve, reject) => {
-            console.time("Time to get details for Google")
             getBusinessesInMoreDetail(businesses).then(detailedBusinesses => {
-                console.timeEnd("Time to get details for Google")
-                console.log("got more details")
+                logger.info("got more details")
                 return resolve(detailedBusinesses)
             }).catch(err => {
-                console.log("error getting details in google: ", err)
+                logger.error("error getting details in google: ", err)
                 return reject(err)
             })
         })
@@ -53,8 +54,8 @@ function getBusinesses(queryObjects, required) {
                 let amountToFetch = required[queryObject.subcategory].count
 
                 getBusinessesFromGoogle(queryObject, amountToFetch).then(response => {
-                    console.log("got " + response.length + " result(s) for query ", queryObject.data.query)
-                    console.log("We needed this many: ", amountToFetch)
+                    logger.info("got " + response.length + " result(s) for query ", queryObject.data.query)
+                    logger.info("We needed this many: ", amountToFetch)
                     response.forEach(result => {
                         result.id = result.place_id
                         results.push(result)
@@ -72,7 +73,7 @@ function getBusinesses(queryObjects, required) {
                         return resolve(results)
                     }
                 }).catch(e => {
-                    console.log("error here: ", e)
+                    logger.error("error here: ", e)
                     return reject(e)
                 })
             }
@@ -117,7 +118,7 @@ function getBusinesses(queryObjects, required) {
                                 })
                             }
                         } else {
-                            console.log("we got an error...: ", err)
+                            logger.error("we got an error...: ", err)
                             return reject(err)
                         }
                     })
@@ -186,10 +187,10 @@ function getQueryData(data, required) {
     }
 }
 
-async function getBusinessesInMoreDetail(businesses) {
+function getBusinessesInMoreDetail(businesses) {
     return new Promise((resolve, reject) => {
         let detailedResults = []
-        console.log("in google getting details for this many: ", businesses.length)
+        logger.info("in google getting details for this many: ", businesses.length)
         businesses.forEach(business => {
             let url = config.google.getBusinessInMoreDetailUrl
             url += 'placeid=' + business.place_id + '&key=' + config.google.placesApiKey
@@ -198,25 +199,25 @@ async function getBusinessesInMoreDetail(businesses) {
                     response.data.result.category = business.category
                     response.data.result.subcategory = business.subcategory
 
-                    let detailedBusiness = formatBusinessResult(response.data.result)
-                    detailedResults.push(detailedBusiness)
+                    formatBusinessResult(response.data.result).then(detailedBusiness => {
+                        detailedResults.push(detailedBusiness)
 
-                    //Check to see if we're done
-                    if (detailedResults.length === businesses.length) {
-                        // If there are no opening hours, remove
-                        console.log("in google. BEFORE removal: ", detailedResults.length)
-                        detailedResults = helpers.removeIfNoValueByKey(detailedResults, 'hours')
-                        console.log("in google. After removal: ", detailedResults.length)
-                        return resolve(detailedResults)
-                    }
+                        if (detailedResults.length === businesses.length) {
+                            logger.info("in google. BEFORE removal: ", detailedResults.length)
+                            detailedResults = helpers.removeIfNoValueByKey(detailedResults, 'hours')
+                            logger.info("in google. After removal: ", detailedResults.length)
+                            return resolve(detailedResults)
+                        }
+                    })
+
                 } else {
                     //handle error here...
-                    console.log("error getting googld full: ", response)
+                    logger.error("error getting googld full: ", response)
                     return reject(500)
                 }
             }).catch(err => {
-                console.log("error getting details for google: ", err)
-                console.log("failed on this url: ", url)
+                logger.error("error getting details for google: ", err)
+                logger.error("failed on this url: ", url)
                 return reject(err)
             })
         })
@@ -227,28 +228,49 @@ async function getBusinessesInMoreDetail(businesses) {
      * @param  {Object} The business returned
      * @return {Object} The formatted data from said business
      */
-    function formatBusinessResult(business) {
-        return {
-            name: business.name,
-            description: formatDescription(),
-            placeId: business.place_id,
-            phone: business.formatted_phone_number,
-            address: business.formatted_address,
-            location: getLocation(business),
-            website: business.website,
-            hours: getHours(business),
-            reviews: business.reviews,
-            photos: getPhotoIds(business),
-            price: business.price_level,
-            rating: business.rating,
-            category: business.category,
-            subcategory: business.subcategory,
-            mapsUrl: formatMapsUrl(business.geometry.location.lat, business.geometry.location.lng),
-            provider: 'google'
-        }
+    async function formatBusinessResult(business) {
+        return new Promise((resolve, reject) => {
+            getDescription(business).then(description => {
+                let detailedBusiness = {
+                    name: business.name,
+                    description: description,
+                    placeId: business.place_id,
+                    phone: business.formatted_phone_number,
+                    address: business.formatted_address,
+                    location: getLocation(business),
+                    website: business.website,
+                    hours: getHours(business),
+                    reviews: business.reviews,
+                    photos: getPhotoIds(business),
+                    price: business.price_level,
+                    rating: business.rating,
+                    category: business.category,
+                    subcategory: business.subcategory,
+                    mapsUrl: formatMapsUrl(business.geometry.location.lat, business.geometry.location.lng),
+                    provider: 'google'
+                }
 
-        function formatDescription() {
-            return "Descriptions coming soon!"
+                return resolve(detailedBusiness)
+            })
+        })
+
+        function getDescription(business) {
+            return new Promise((resolve, reject) => {
+                let searchTerm = business.name + " " + business.formatted_address
+
+                google(searchTerm, function(err, res) {
+                    if (err) {
+                        logger.error("error getting description: ", err)
+                        return resolve("No description available")
+                    }
+
+                    var description = res.$('.DjxOn').text().trim();
+                    if (!description.length) {
+                        description = res.$('.oTDgte').text().trim()
+                    }
+                    return resolve(description)
+                })
+            })
         }
 
         /**

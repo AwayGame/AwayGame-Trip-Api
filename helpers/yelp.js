@@ -1,3 +1,6 @@
+const google = require('google')
+google.resultsPerPage = 1
+
 const moment = require('moment')
 const yelp = require('yelp-fusion')
 const queue = require('async/queue')
@@ -56,12 +59,12 @@ function searchForBusinesses(data, required) {
         let q = queue(function(task, callback) {
             redisHelper.get(task.key).then(cachedData => {
                 if (cachedData) {
-                    console.log("(from cache) We got " + cachedData.results.length + " result(s) from Yelp for category: ", task.activity)
-                    console.log("we needed " + required[task.activity].count)
+                    logger.info("(from cache) We got " + cachedData.results.length + " result(s) from Yelp for category: ", task.activity)
+                    logger.info("we needed " + required[task.activity].count)
                     finalResults = finalResults.concat(cachedData.results)
                     callback()
                 } else {
-                    if(task.preference.indexOf('game') > -1) {
+                    if (task.preference.indexOf('game') > -1) {
                         return callback()
                     }
                     // If the key is famous sights, then use 8 miles for the radius
@@ -75,8 +78,8 @@ function searchForBusinesses(data, required) {
                         limit: 30,
                         radius: helpers.milesToRadius(data.radius)
                     }).then(response => {
-                        console.log("We got " + response.jsonBody.businesses.length + " result(s) from Yelp for category: ", task.activity)
-                        console.log("we needed " + required[task.activity].count)
+                        logger.info("We got " + response.jsonBody.businesses.length + " result(s) from Yelp for category: ", task.activity)
+                        logger.info("we needed " + required[task.activity].count)
                         response.jsonBody.businesses.forEach(business => {
                             business.category = required[task.activity].category
                             business.subcategory = task.activity
@@ -89,7 +92,7 @@ function searchForBusinesses(data, required) {
                         })
                         callback()
                     }).catch(e => {
-                        console.log("error from yelp: ", e)
+                        logger.error("error from yelp: ", e)
                         callback()
                     });
                 }
@@ -100,7 +103,7 @@ function searchForBusinesses(data, required) {
         requestObjects.forEach(obj => q.push(obj))
 
         q.drain = function() {
-            console.log("queue has been drained")
+            logger.info("queue has been drained")
             finalResults = helpers.removeDuplicates(finalResults, 'id')
             finalResults = helpers.addProvider(finalResults, 'yelp')
             return resolve(finalResults)
@@ -121,7 +124,7 @@ function searchForBusinesses(data, required) {
 
 function getBusinessesInMoreDetail(businesses) {
     let count = 0
-    console.log("In yelp - getting " + businesses.length + " businesses in more detail")
+    logger.info("In yelp - getting " + businesses.length + " businesses in more detail")
     return new Promise((resolve, reject) => {
         if (!businesses || !businesses.length) return resolve([])
 
@@ -138,13 +141,13 @@ function getBusinessesInMoreDetail(businesses) {
         let q = queue(function(task, callback) {
             getBusiness(task.id).then(function(result) {
                 count++
-                
+
                 if (!result.hours) {
-                    console.log("business didn't have hours!")
+                    logger.info("business didn't have hours!")
                     callback()
                 } else {
                     setTimeout(function() {
-                        console.log("we've now gotten this many: ", count)
+                        logger.info("we've now gotten this many: " + count)
                         result.category = task.category
                         result.subcategory = task.subcategory
                         detailedResults.push(formatBusinessResult(result))
@@ -152,7 +155,7 @@ function getBusinessesInMoreDetail(businesses) {
                     }, 125)
                 }
             }).catch(e => {
-                console.log("error geting business: ", e)
+                logger.error("error geting business: ", e)
                 callback()
             })
         }, 2);
@@ -160,7 +163,7 @@ function getBusinessesInMoreDetail(businesses) {
         businesses.forEach(business => q.push(business))
 
         q.drain = function() {
-            console.log("Exiting the Yelp queue....")
+            logger.info("Exiting the Yelp queue....")
             return resolve(detailedResults)
         }
     })
@@ -201,27 +204,48 @@ function getBusinessesInMoreDetail(businesses) {
      * @return {Object} The formatted data from said business
      */
     function formatBusinessResult(business) {
-        return {
-            name: business.name,
-            description: formatDescription(),
-            id: business.id,
-            phone: business.display_phone,
-            address: business.location.display_address.join(', '),
-            location: getLocation(business),
-            mapsUrl: formatMapsUrl(business.coordinates.latitude, business.coordinates.longitude),
-            website: null,
-            hours: getHours(business),
-            reviews: business.reviews,
-            photos: business.photos,
-            price: config.yelp.YELP_PRICE_TO_DOUBLE[business.price],
-            rating: business.rating,
-            category: business.category,
-            subcategory: business.subcategory,
-            provider: 'yelp'
-        }
+        return new Promise((resolve, reject) => {
+            getDescription(business).then(description => {
+                let detailedBusiness = {
+                    name: business.name,
+                    description: description,
+                    id: business.id,
+                    phone: business.display_phone,
+                    address: business.location.display_address.join(', '),
+                    location: getLocation(business),
+                    mapsUrl: formatMapsUrl(business.coordinates.latitude, business.coordinates.longitude),
+                    website: null,
+                    hours: getHours(business),
+                    reviews: business.reviews,
+                    photos: business.photos,
+                    price: config.yelp.YELP_PRICE_TO_DOUBLE[business.price],
+                    rating: business.rating,
+                    category: business.category,
+                    subcategory: business.subcategory,
+                    provider: 'yelp'
+                }
 
-        function formatDescription() {
-            return "Descriptions coming soon!"
+                return resolve(detailedBusiness)
+            })
+        })
+
+        function getDescription(business) {
+            return new Promise((resolve, reject) => {
+                let searchTerm = business.name + " " + business.location.display_address.join(', ')
+
+                google(searchTerm, function(err, res) {
+                    if (err) {
+                        logger.error("error getting description: ", err)
+                        return resolve("No description available")
+                    }
+
+                    var description = res.$('.DjxOn').text().trim();
+                    if (!description.length) {
+                        description = res.$('.oTDgte').text().trim()
+                    }
+                    return resolve(description)
+                })
+            })
         }
 
         /**

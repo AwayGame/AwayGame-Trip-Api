@@ -37,9 +37,9 @@ module.exports = {
 
             try {
                 let required = helpers.getRequiredBusinessesFromTripStub(tripStub)
-                console.log("GETTING DATA...")
+                logger.info("GETTING DATA...")
                 let businessData = await getListOfBusinessesFromProviders(data, required)
-                console.log("got business data")
+                logger.info("got business data")
 
                 let initialListOfBusinesses = []
 
@@ -47,33 +47,34 @@ module.exports = {
                     initialListOfBusinesses.push(...businessData[i])
                 }
 
-                console.log("Number of businesses before we take stuff out: ", initialListOfBusinesses.length)
+                logger.info("Number of businesses before we take stuff out: ", initialListOfBusinesses.length)
                 initialListOfBusinesses = _.uniq(initialListOfBusinesses, 'id');
                 initialListOfBusinesses = _.uniq(initialListOfBusinesses, 'name');
                 initialListOfBusinesses = sortByUserPreferenceAndRemoveBusinessesWithoutRequiredParameters(initialListOfBusinesses, data.preferences)
-                console.log("Number of businesses after we take stuff out: ", initialListOfBusinesses.length)
+                logger.info("Number of businesses after we take stuff out: ", initialListOfBusinesses.length)
 
                 //@TODO: Only pull what we need
                 let finalListOfBusinesses = getFinalListOfBusinessesFromTripStub(initialListOfBusinesses, required)
                 //let finalListOfBusinesses = initialListOfBusinesses
-                console.log("got the list of busines: ", finalListOfBusinesses.length)
+                logger.info("got the list of busines: ", finalListOfBusinesses.length)
                 let finalBusinessData = await getMoreDetails(finalListOfBusinesses)
-                console.log("final list of businesses length: ", finalListOfBusinesses.length)
+                logger.info("final list of businesses length: ", finalListOfBusinesses.length)
 
                 let finalBusinesses = []
                 for (var i = 0; i < finalBusinessData.length; i++) {
-                    console.log("lemgth of finalBusinessData at index " + i + " is: ", finalBusinessData[i].length)
+                    logger.info("lemgth of finalBusinessData at index " + i + " is: ", finalBusinessData[i].length)
                     finalBusinesses.push(...finalBusinessData[i])
                 }
-                console.log("fetched this many for final: ", finalBusinesses.length)
+                logger.info("fetched this many for final: ", finalBusinesses.length)
 
                 formatTripFromBusinesses(tripStub, finalBusinesses, data).then(trip => {
-                    console.log("\n\nfinished creating trip. Here it is:", trip)
+                    logger.info("\n\nfinished creating trip. Here it is:", trip)
                     return resolve(trip)
                 })
             } catch (e) {
-                console.log("error creating trip")
-                console.log(e)
+                logger.error("error creating trip")
+                logger.error(e)
+                
                 return resolve({
                     failed: true,
                     itineraries: [{
@@ -156,13 +157,13 @@ async function getGameData(tmGameKey) {
         let cachedGameData = await redisHelper.get(tmGameKey)
         if (cachedGameData) {
             cachedGameData.startTime = moment(cachedGameData.date).subtract(1, 'hour')
-            console.log("cached data start time: ", cachedGameData.startTime)
+            logger.info("cached data start time: ", cachedGameData.startTime)
             cachedGameData.date = moment(cachedGameData.date)
             return resolve(cachedGameData)
         } else {
             data = await TicketMasterHelper.getGameDetails(_.last(tmGameKey.split('-')))
 
-            console.log("here is the game: ", data)
+            logger.info("here is the game: ", data)
             let time = data.dates.start.dateTime
             let latLngStr = data._embedded.venues[0].location.latitude + "," + data._embedded.venues[0].location.longitude
 
@@ -251,8 +252,8 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
         }
 
         function getBusinessAndBackupOpenAtAvailableTime(data, day) {
-            console.log("length test.....", businesses.length)
-            console.log("\nGetting businesses for this day: ", day)
+            logger.info("length test.....", businesses.length)
+            logger.info("\nGetting businesses for this day: ", day)
             let foundBusinesses = []
             let totalAdded = 0
             for (var i = 0; i < tripStub[day].length; i++) {
@@ -341,8 +342,8 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
     })
 
     function businessIsOpenOnTime(businessDay, day, activity) {
-        //console.log("\ndoes it have an open?: ", businessDay.open)
-        //console.log("does it have an close?: ", businessDay.close)
+        //logger.info("\ndoes it have an open?: ", businessDay.open)
+        //logger.info("does it have an close?: ", businessDay.close)
         if (!businessDay.open || !businessDay.close) return false
         if (!businessDay.open.time || !businessDay.close.time) return false
 
@@ -352,11 +353,11 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
         let businessCloseTime = moment(day + helpers.convert24HourIntToString(parseInt(businessDay.close.time)))
         let timeAfterActivitiy = activityTime.clone().add(config.activityDuration[activity.name], 'm')
 
-        //console.log("comparing businessDay.open.time " + businessDay.open.time + " with formatted: ", businessOpenTime.format('h:mm a'))
-        //console.log("comparing businessDay.close.time " + businessDay.close.time + " with formatted: ", businessCloseTime.format('h:mm a'))
-        //console.log("is " + businessOpenTime.format('h:mm a') + " the same or before " + activityTime.format('h:mm a') + "?: ", businessOpenTime.isSameOrBefore(activityTime))
-        //console.log("is " + businessCloseTime.format('h:mm a') + " the same or after " + timeAfterActivitiy.format('h:mm a') + "?: ", businessCloseTime.isSameOrAfter(timeAfterActivitiy))
-        //console.log("\n")
+        //logger.info("comparing businessDay.open.time " + businessDay.open.time + " with formatted: ", businessOpenTime.format('h:mm a'))
+        //logger.info("comparing businessDay.close.time " + businessDay.close.time + " with formatted: ", businessCloseTime.format('h:mm a'))
+        //logger.info("is " + businessOpenTime.format('h:mm a') + " the same or before " + activityTime.format('h:mm a') + "?: ", businessOpenTime.isSameOrBefore(activityTime))
+        //logger.info("is " + businessCloseTime.format('h:mm a') + " the same or after " + timeAfterActivitiy.format('h:mm a') + "?: ", businessCloseTime.isSameOrAfter(timeAfterActivitiy))
+        //logger.info("\n")
         //@TODO: Make sure that you can stay after close
         //return businessOpenTime.isSameOrBefore(activityTime) && businessCloseTime.isSameOrAfter(timeAfterActivitiy)
         return businessOpenTime.isSameOrBefore(activityTime)
