@@ -33,8 +33,6 @@ module.exports = {
                 })
             }
 
-            //return resolve(tripStub)
-
             try {
                 let required = helpers.getRequiredBusinessesFromTripStub(tripStub)
                 logger.info("GETTING DATA...")
@@ -68,13 +66,13 @@ module.exports = {
                 logger.info("fetched this many for final: ", finalBusinesses.length)
 
                 formatTripFromBusinesses(tripStub, finalBusinesses, data).then(trip => {
-                    logger.info("\n\nfinished creating trip. Here it is:", trip)
+                    logger.info("finished creating trip")
                     return resolve(trip)
                 })
             } catch (e) {
                 logger.error("error creating trip")
                 logger.error(e)
-                
+
                 return resolve({
                     failed: true,
                     itineraries: [{
@@ -252,8 +250,8 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
         }
 
         function getBusinessAndBackupOpenAtAvailableTime(data, day) {
-            logger.info("length test.....", businesses.length)
-            logger.info("\nGetting businesses for this day: ", day)
+            console.log("length test.....", businesses.length)
+            console.log("\nGetting businesses for this day: ", day)
             let foundBusinesses = []
             let totalAdded = 0
             for (var i = 0; i < tripStub[day].length; i++) {
@@ -262,21 +260,23 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
 
                 for (var j = 0; j < businesses.length; j++) {
                     let business = businesses[j]
-                    for (var k = 0; k < business.hours.individualDaysData.length; k++) {
-                        let businessDay = business.hours.individualDaysData[k]
-                        if (businessHasNotBeenUsed(foundBusinesses, business) && business.subcategory === activity.name /*&& businessDay.open.day === moment(day).day() && businessIsOpenOnTime(businessDay, day, activity)*/ ) {
-                            totalAdded++
-                            businessFound = true
-                            foundBusinesses.push(business)
+                    if (business.hours) {
+                        for (var k = 0; k < business.hours.individualDaysData.length; k++) {
+                            let businessDay = business.hours.individualDaysData[k]
+                            if (businessHasNotBeenUsed(foundBusinesses, business) && business.subcategory === activity.name /*&& businessDay.open.day === moment(day).day() && businessIsOpenOnTime(businessDay, day, activity)*/ ) {
+                                totalAdded++
+                                businessFound = true
+                                foundBusinesses.push(business)
 
-                            Object.keys(foundBusinesses[0]).forEach(key => {
-                                activity[key] = foundBusinesses[0][key]
-                            })
+                                Object.keys(foundBusinesses[0]).forEach(key => {
+                                    activity[key] = foundBusinesses[0][key]
+                                })
 
-                            businesses = _(businesses).filter(function(b) {
-                                return !foundBusinesses.includes(b)
-                            });
-                            foundBusinesses = []
+                                businesses = _(businesses).filter(function(b) {
+                                    return !foundBusinesses.includes(b)
+                                });
+                                foundBusinesses = []
+                            }
                         }
                     }
                 }
@@ -314,21 +314,23 @@ function formatTripFromBusinesses(tripStub, businesses, data) {
 
                     for (var j = 0; j < businesses.length; j++) {
                         let business = businesses[j]
-                        for (var k = 0; k < business.hours.individualDaysData.length; k++) {
-                            let businessDay = business.hours.individualDaysData[k]
-                            if (businessHasNotBeenUsed(foundBusinesses, business)) {
-                                totalAdded++
-                                businessFound = true
-                                foundBusinesses.push(business)
+                        if (business.hours) {
+                            for (var k = 0; k < business.hours.individualDaysData.length; k++) {
+                                let businessDay = business.hours.individualDaysData[k]
+                                if (businessHasNotBeenUsed(foundBusinesses, business)) {
+                                    totalAdded++
+                                    businessFound = true
+                                    foundBusinesses.push(business)
 
-                                Object.keys(foundBusinesses[0]).forEach(key => {
-                                    activity[key] = foundBusinesses[0][key]
-                                })
+                                    Object.keys(foundBusinesses[0]).forEach(key => {
+                                        activity[key] = foundBusinesses[0][key]
+                                    })
 
-                                businesses = _(businesses).filter(function(b) {
-                                    return !foundBusinesses.includes(b)
-                                });
-                                foundBusinesses = []
+                                    businesses = _(businesses).filter(function(b) {
+                                        return !foundBusinesses.includes(b)
+                                    });
+                                    foundBusinesses = []
+                                }
                             }
                         }
                     }

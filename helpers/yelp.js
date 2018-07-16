@@ -235,7 +235,7 @@ function getBusinessesInMoreDetail(businesses) {
 
                 google(searchTerm, function(err, res) {
                     if (err) {
-                        logger.error("error getting description: ", err)
+                        logger.error("error getting description in yelp")
                         return resolve("No description available")
                     }
 

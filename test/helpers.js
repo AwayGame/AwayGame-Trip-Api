@@ -19,6 +19,9 @@ let games = [{
 }, {
     gameId: "Z7r9jZ1Ae8FqY",
     start: "2018-07-18T10:00:00Z"
+}, {
+    gameId: "Z7r9jZ1AeFZGd",
+    start: "2018-07-17T10:15:00Z"
 }]
 
 

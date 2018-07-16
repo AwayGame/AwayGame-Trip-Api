@@ -203,9 +203,7 @@ function getBusinessesInMoreDetail(businesses) {
                         detailedResults.push(detailedBusiness)
 
                         if (detailedResults.length === businesses.length) {
-                            logger.info("in google. BEFORE removal: ", detailedResults.length)
                             detailedResults = helpers.removeIfNoValueByKey(detailedResults, 'hours')
-                            logger.info("in google. After removal: ", detailedResults.length)
                             return resolve(detailedResults)
                         }
                     })
@@ -260,7 +258,7 @@ function getBusinessesInMoreDetail(businesses) {
 
                 google(searchTerm, function(err, res) {
                     if (err) {
-                        logger.error("error getting description: ", err)
+                        logger.error("error getting description in google")
                         return resolve("No description available")
                     }
 
